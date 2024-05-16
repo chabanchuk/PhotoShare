@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "photoshare"
+version = "0.1.0"
+description = "PhotoShare REST API application - GoIT Python Web team project"
+authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>",
+    "Denys Poletuchiy <denpolet@gmail.com>",
+    "Angelika Kodlubovska <angelikagymnasticschannel@gmail.com>",
+    "Sergiy Chabanchuk <chabanchuk@gmail.com>",
+    "Maksym Melnyk <maks.melnyk.94@gmail.com>"
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.111.0"
+pydantic = {extras = ["email"], version = "^2.7.1"}
+pydantic-settings = "^2.2.1"
+sqlalchemy = "^2.0.30"
+cloudinary = "^1.40.0"
+psycopg2 = "^2.9.9"
+python-jose = "^3.3.0"
+bcrypt = "^4.1.3"
+jinja2 = "^3.1.4"
+uvicorn = "^0.29.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+faker = "^25.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
