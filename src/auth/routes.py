@@ -11,17 +11,20 @@ router = APIRouter()
 @router.post("/users/", response_model=User)
 async def create_user(username: str, password: str, db: AsyncSession = Depends(get_db)):
     """
-    Створити нового користувача.
+    Create a new user.
 
     Args:
-        username (str): Ім'я користувача.
-        password (str): Пароль користувача.
-        db (AsyncSession, optional): Сеанс бази даних. За замовчуванням використовує Depends(get_db).
+        username (str): User name.
+        password (str): User password.
+        db (AsyncSession, optional): Database session. By default, it uses Depends(get_db).
 
     Returns:
-        User: Створений користувач.
+        User: User created.
     """
-    hashed_password = bcrypt.hash(password)
+    # We convert the password string into bytes before hashing
+    hashed_password_bytes = bcrypt.hash(password.encode())
+    # Return the bytes to the string after hashing
+    hashed_password = hashed_password_bytes.decode()
     new_user = User(username=username, hashed_password=hashed_password)
     db.add(new_user)
     await db.commit()

@@ -21,7 +21,7 @@ app.include_router(comment_router)
 app.include_router(photo_router)
 app.include_router(user_router)
 app.include_router(frontend_router)
-app.include_router(tags_router, prefix="/api")
+app.include_router(tags_router)
 
 
 if __name__ == "__main__":

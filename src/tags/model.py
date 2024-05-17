@@ -1,14 +1,15 @@
-from pydantic import BaseModel
+from typing import List
+from pydantic import BaseModel, ConfigDict
+from photo.model import PhotoModel
 
 class TagModel(BaseModel):
-    tag: str
-
+    """
+    A model for a tag that represents the structure of a tag
+    """
+    name: str
+    photos: List["PhotoModel"] = []  # List of photos associated with this tag
     class Config:
-        orm_mode = True
-
-class TagResponseModel(BaseModel):
-    id: int
-    tag: str
-
-    class Config:
-        orm_mode = True
+        """
+        Adjusting the model
+        """
+        model_config = ConfigDict(from_attributes=True)
