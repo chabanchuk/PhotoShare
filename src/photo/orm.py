@@ -14,7 +14,7 @@ class PhotoORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     url: Mapped[str] = mapped_column(String, nullable=False)
-    author_name: Mapped[str] = mapped_column(ForeignKey("profiles.full_name", ondelete="CASCADE"))
+    author_fk: Mapped[int] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE")
     author: Mapped[ProfileORM] = relationship("ProfileORMr", back_populates="photos")
     comments: Mapped[List["CommentORM"]] = relationship(back_populates="photos")
     tags: Mapped[List["TagORM"]] = relationship(back_populates="photos")
