@@ -7,8 +7,8 @@ from photo.routes import router as photo_router
 from user_profile.routes import router as user_router
 from frontend.routes import router as frontend_router
 
-from database.db import engine
-from database.models import Base
+from database import engine
+from user_profile.model import Base
 
 app = FastAPI()
 

@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from passlib.hash import bcrypt
 
-from database.models import User
-from database.db import get_db
+from user_profile.model import User
+from database import get_db
 
 router = APIRouter()
 
