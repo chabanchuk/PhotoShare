@@ -10,6 +10,8 @@ from photo.routes import router as photo_router
 from user_profile.routes import router as user_router
 from frontend.routes import router as frontend_router
 
+import middlewares.crutches as crutches
+
 app = FastAPI()
 
 static_path = Path(__file__).parent / 'frontend' / 'static'
@@ -20,6 +22,16 @@ app.include_router(comment_router)
 app.include_router(photo_router)
 app.include_router(user_router)
 app.include_router(frontend_router)
+
+
+@app.middleware('http')
+async def call_header_cookie_crutch(request, call_next):
+    return await crutches.cookie_to_header_jwt(request, call_next)
+
+
+@app.middleware('http')
+async def call_response_modificator(request, call_next):
+    return await crutches.modify_json_response(request, call_next)
 
 
 if __name__ == "__main__":
