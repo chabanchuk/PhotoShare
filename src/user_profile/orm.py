@@ -4,7 +4,7 @@ from typing import Optional, Any, List
 from sqlalchemy import String, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import Base, get_db
+from src.database import Base, get_db
 
 
 async def full_name_calculated_default(context) -> str:
