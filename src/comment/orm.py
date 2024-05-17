@@ -1,7 +1,10 @@
 from datetime import datetime
 from sqlalchemy import Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
 from database import Base
+from photo.orm import PhotoORM
+from user_profile.orm import ProfileORM
 
 class CommentORM(Base):
     """
@@ -13,8 +16,8 @@ class CommentORM(Base):
     text: Mapped[str] = mapped_column(String, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), onupdate=func.now())
-    author_profile_id: Mapped[int] = mapped_column(Integer, ForeignKey("profiles.id"))
-    photo_id: Mapped[int] = mapped_column(Integer, ForeignKey("photos.id"))
+    author_fk: Mapped[int] = mapped_column(Integer, ForeignKey('profiles.id'))
+    photo_fk: Mapped[int] = mapped_column(Integer, ForeignKey('photos.id'))
 
-    author_profile: Mapped["ProfileORM"] = relationship("ProfileORM", back_populates="comments")
-    photo: Mapped["PhotoORM"] = relationship("PhotoORM", back_populates="comments")
+    author: Mapped[ProfileORM] = relationship("ProfileORM", back_populates="comments")
+    photo: Mapped[PhotoORM] = relationship("PhotoORM", back_populates="comments")
