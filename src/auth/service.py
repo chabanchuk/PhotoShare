@@ -4,6 +4,7 @@ from typing import Any, TypeAlias, Literal, Annotated
 from jose import jwt, JWTError
 import bcrypt
 from fastapi import security, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from starlette import status
 
@@ -163,7 +164,7 @@ class Authentication:
     def get_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
-            db: Annotated[Session, Depends(get_db)],
+            db: Annotated[AsyncSession, Depends(get_db)],
             scope: Scope = "access_token"
     ) -> Any:
         """
@@ -252,14 +253,14 @@ class Authentication:
     def get_access_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
-            db: Annotated[Session, Depends(get_db)]
+            db: Annotated[AsyncSession, Depends(get_db)]
     ) -> Any:
         """
         A function to get access to a user with the provided token and database session.
 
         Parameters:
             token (str): The token used to authenticate the user.
-            db (Session): The database session to retrieve the user from.
+            db (AsyncSession): The database session to retrieve the user from.
 
         Returns:
             Any: The user retrieved using the token and database session.
@@ -272,14 +273,14 @@ class Authentication:
     async def get_refresh_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
-            db: Annotated[Session, Depends(get_db)]
+            db: Annotated[AsyncSession, Depends(get_db)]
     ) -> Any:
         """
         A function to get refresh user information based on the provided token and database session.
 
         Parameters:
             token (str): The token used to authenticate the user.
-            db (Session): The database session to retrieve the user from.
+            db (AsyncSession): The database session to retrieve the user from.
 
         Returns:
             Any: The user retrieved using the token and database session with scope set to "refresh_token".
@@ -293,14 +294,14 @@ class Authentication:
     def get_email_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
-            db: Annotated[Session, Depends(get_db)]
+            db: Annotated[AsyncSession, Depends(get_db)]
     ) -> Any:
         """
         A function to retrieve the user information based on the access token and database session.
 
         Parameters:
             token (str): The access token required for authentication.
-            db (Session): The database session.
+            db (AsyncSession): The database session.
 
         Returns:
             Any: The user information retrieved using the provided token and database session.
