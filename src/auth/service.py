@@ -20,7 +20,7 @@ class Authentication:
     REFRESH_ALGORITHM = settings.refresh_algorithm
     SECRET_256 = settings.secret_256
     SECRET_512 = settings.secret_512
-    oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+    oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="/auth/login")
 
     def verify_password(
             self,

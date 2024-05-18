@@ -1,13 +1,13 @@
-from sqlalchemy import ForeignKey, Table, Column
-from sqlalchemy.orm import relationship, Mapped, mapped_column, DeclarativeBase
-from sqlalchemy.sql import func
-from sqlalchemy import String, Integer, DateTime
-from src.database import Base
-from src.user_profile.orm import ProfileORM
-from typing import List, Optional
-from comment.orm import CommentORM
-from tags.orm import TagORM
+from typing import List
 
+from sqlalchemy import ForeignKey, Table, Column
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy import String
+
+# from user_profile.orm import ProfileORM
+# from comment.orm import CommentORM
+# from tags.orm import TagORM
+from database import Base
 
 photo_tag_association_table = Table(
     "photo_tag",
@@ -16,6 +16,7 @@ photo_tag_association_table = Table(
     Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
 )
 
+
 class PhotoORM(Base):
     __tablename__ = "photos"
 
@@ -23,7 +24,7 @@ class PhotoORM(Base):
     description: Mapped[str] = mapped_column(String, nullable=False)
     url: Mapped[str] = mapped_column(String, nullable=False)
     author_fk: Mapped[int] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
-    author: Mapped[ProfileORM] = relationship("ProfileORMr", back_populates="photos")
+    author: Mapped["ProfileORM"] = relationship("ProfileORMr", back_populates="photos")
     comments: Mapped[List["CommentORM"]] = relationship(back_populates="photos")
-    tags: Mapped[List[TagORM]] = relationship(secondary=photo_tag_association_table, back_populates="photos")
+    tags: Mapped[List["TagORM"]] = relationship(secondary=photo_tag_association_table, back_populates="photos")
 

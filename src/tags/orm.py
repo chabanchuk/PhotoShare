@@ -3,8 +3,8 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.schema import ForeignKey
 
-from database import Base
 from photo.orm import photo_tag_association_table
+from database import Base
 
 
 class TagORM(Base):
