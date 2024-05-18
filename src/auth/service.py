@@ -5,6 +5,7 @@ from jose import jwt, JWTError
 import bcrypt
 from fastapi import security, Depends, HTTPException
 from sqlalchemy import select
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -289,7 +290,7 @@ class Authentication:
 
         Parameters:
             token (str): The token used to authenticate the user.
-            db (Session): The database session to retrieve the user from.
+            db (AsyncSession): The database session to retrieve the user from.
 
         Returns:
             Any: The user retrieved using the token and database session.
@@ -310,7 +311,7 @@ class Authentication:
 
         Parameters:
             token (str): The token used to authenticate the user.
-            db (Session): The database session to retrieve the user from.
+            db (AsyncSession): The database session to retrieve the user from.
 
         Returns:
             Any: The user retrieved using the token and database session with scope set to "refresh_token".
@@ -331,7 +332,7 @@ class Authentication:
 
         Parameters:
             token (str): The access token required for authentication.
-            db (Session): The database session.
+            db (AsyncSession): The database session.
 
         Returns:
             Any: The user information retrieved using the provided token and database session.

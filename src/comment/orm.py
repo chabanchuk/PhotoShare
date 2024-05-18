@@ -3,8 +3,6 @@ from sqlalchemy import Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-# from user_profile.orm import ProfileORM
-# from photo.orm import PhotoORM
 from database import Base
 
 
