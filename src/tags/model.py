@@ -2,6 +2,7 @@ from typing import List
 from pydantic import BaseModel, ConfigDict
 from photo.model import PhotoModel
 
+
 class TagModel(BaseModel):
     """
     A model for a tag that represents the structure of a tag

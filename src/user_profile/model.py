@@ -5,7 +5,9 @@ from pydantic import (BaseModel,
                       EmailStr,
                       PastDate,
                       computed_field,
-                      Field, PositiveInt)
+                      Field, PositiveInt, ConfigDict)
+
+from user_profile.orm import Role
 
 
 class UserAuthModel(BaseModel):
@@ -28,13 +30,42 @@ class UserProfileModel(BaseModel):
     """
     Model that holds all user information
     """
+    username: str
     first_name: str
     last_name: Optional[str]
     email: EmailStr
     birthday: Optional[PastDate]
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
+    role: Role = Field(default='user')
     photos: Optional[List["PhotoModel"]] = []
     comments: Optional[List["CommentModel"]] = []
+
+    @computed_field
+    @property
+    def full_name(self) -> str:
+        """
+        Fields value is computed by concatenation of first_name
+        and not empty last_name
+
+        Returns:
+            str: Full name
+        """
+        lname = ' ' + self.last_name if self.last_name else ''
+        return self.first_name + lname
+
+
+class UserPublicProfileModel(BaseModel):
+    """
+    Model that holds public user information
+    """
+    model_config = ConfigDict(from_attributes=True)
+    username: str = Field()
+    first_name: str
+    last_name: Optional[str]
+    registered_at: datetime = Field(default=datetime.now(timezone.utc))
+    role: Role = Field(default='user')
+    photos: PositiveInt = Field(default=0)
+    comments: PositiveInt = Field(default=0)
 
     @computed_field
     @property

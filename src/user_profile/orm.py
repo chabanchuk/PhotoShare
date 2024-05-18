@@ -89,5 +89,5 @@ class ProfileORM(Base):
     birthday: Mapped[Optional[date]] = mapped_column(Date())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[UserORM] = relationship(back_populates='profile')
-    photos: Mapped[List["PhotoORM"]] = relationship(back_populates='owner')
-    comment: Mapped[List["CommentORM"]] = relationship(back_populates="author")
+    photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
+    comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")
