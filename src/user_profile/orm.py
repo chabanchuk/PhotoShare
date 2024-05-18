@@ -4,7 +4,9 @@ from typing import Optional, Any, List
 from sqlalchemy import String, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import Base, get_db
+from src.comment.orm import CommentORM
+from src.database import Base, get_db
+from src.photo.orm import PhotoORM
 
 
 async def full_name_calculated_default(context) -> str:
@@ -54,11 +56,13 @@ class UserORM(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # username will be used to store email for OAuth2 compatibility
-    email: Mapped[Optional[str]] = mapped_column(String(80),
-                                                 unique=True)
+    email: Mapped[Optional[str | None]] = mapped_column(String(80),
+                                                        unique=True)
+    email_confirmed: Mapped[Optional[bool]] = mapped_column(default=False)
     username: Mapped[str] = mapped_column(unique=True)
     # password contains hashed password
-    password: Mapped[str] = mapped_column(nullable=False)
+    hashed_pwd: Mapped[str] = mapped_column(nullable=False)
+    loggedin: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
     )
