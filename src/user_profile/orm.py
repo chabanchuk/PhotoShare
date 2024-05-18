@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, date
-from typing import Optional, Any, List
+from typing import Optional, Any, List, TypeAlias, Literal
 
 from sqlalchemy import String, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -7,6 +7,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.comment.orm import CommentORM
 from src.database import Base, get_db
 from src.photo.orm import PhotoORM
+
+# Role typealias contains list of possible roles
+Role: TypeAlias = Literal['user', 'moderator', 'admin']
 
 
 async def full_name_calculated_default(context) -> str:
@@ -55,18 +58,18 @@ class UserORM(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[Optional[str]] = mapped_column(String(80),
+                                                 unique=True)
     # username will be used to store email for OAuth2 compatibility
-    email: Mapped[Optional[str | None]] = mapped_column(String(80),
-                                                        unique=True)
-    email_confirmed: Mapped[Optional[bool]] = mapped_column(default=False)
     username: Mapped[str] = mapped_column(unique=True)
     # password contains hashed password
-    hashed_pwd: Mapped[str] = mapped_column(nullable=False)
+    password: Mapped[str] = mapped_column(nullable=False)
     loggedin: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
     )
     profile: Mapped["ProfileORM"] = relationship(back_populates="user")
+    role: Mapped[Role] = mapped_column(String(20), default="user")
 
 
 class ProfileORM(Base):
@@ -87,5 +90,5 @@ class ProfileORM(Base):
     birthday: Mapped[Optional[date]] = mapped_column(Date())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[UserORM] = relationship(back_populates='profile')
-    photos: Mapped[List["PhotoORM"]] = relationship(back_populates='owner')
-    comment: Mapped[List["CommentORM"]] = relationship(back_populates="author")
+    photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
+    comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")
