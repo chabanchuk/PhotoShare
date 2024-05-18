@@ -4,7 +4,6 @@ from datetime import timedelta
 
 from fastapi import BackgroundTasks, Depends
 from fastapi.routing import APIRouter
-from fastapi_limiter.depends import RateLimiter
 from pydantic import EmailStr, BaseModel
 from fastapi_mail import (ConnectionConfig,
                           MessageSchema,
@@ -15,10 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.responses import JSONResponse
 
-from src.user_profile.orm import UserORM
-from src.settings import settings
-from src.auth.service import Authentication
-from src.database import get_db
+from user_profile.orm import UserORM
+from settings import settings
+from auth.service import Authentication
+from database import get_db
 
 auth_service = Authentication()
 
@@ -45,8 +44,7 @@ conf = ConnectionConfig(
 )
 
 
-@router.post('/send-confirmation',
-             dependencies=[Depends(RateLimiter(times=2, seconds=10))])
+@router.post('/send-confirmation')
 async def send_confirmation(
         bg_task: BackgroundTasks,
         email: EmailModel,
@@ -56,30 +54,25 @@ async def send_confirmation(
     Sends a confirmation email to the specified email address.
 
     Parameters:
-        - bg_task (BackgroundTasks): An instance of the BackgroundTasks class for scheduling background tasks.
-        - email (EmailModel): The email address to send the confirmation email to.
-        - db (Annotated[AsyncSession, Depends(get_db)]): The asynchronous session dependency for interacting with
-        the database.
+        - bg_task (BackgroundTasks): The background tasks to be executed.
+        - email (EmailModel): The email address to send the confirmation to.
+        - db (Annotated[AsyncSession, Depends(get_db)]): The database session.
 
     Returns:
-        - Any: The response object containing the result of the email sending operation.
+        - Any: A JSON response indicating the success or failure of sending the email.
 
     Raises:
-        - JSONResponse: If the user with the specified email address is not found in the database.
+        - None
 
-    Dependencies:
-        - Depends(RateLimiter(times=2, seconds=10)): A rate limiter dependency to limit the number of requests per
-        time interval.
+    This function sends a confirmation email to the specified email address. It first checks if the user with the given email address exists in the database. If the user is not found, it returns a JSON response with a status code of 404 and a details message indicating that the user was not found.
 
-    Steps:
-        1. Query the database for the user with the specified email address.
-        2. If the user is not found, return a JSONResponse with a 404 status code and a details message.
-        3. Generate an access token with a live time of 1 day for the specified email address.
-        4. Generate the URL path for the confirm_email endpoint with the access token.
-        5. Create a MessageSchema object with the subject, recipients, template_body, and subtype.
-        6. Create an instance of the FastMail class with the provided configuration.
-        7. Schedule a background task to send the message using the FastMail instance.
-        8. Return a dictionary with a success message.
+    If the user is found, a confirmation token is generated using the `auth_service.create_access_token` function. The token is associated with the email address and has a live time of 1 day. The token URL is generated using the `router.url_path_for` function, specifying the 'confirm_email' route and the token as a parameter.
+
+    A message schema is created with the subject "Email confirmation", the recipient email address, a template body containing the token URL, and the subtype set to MessageType.html.
+
+    A FastMail instance is created using the `conf` configuration. The `fm.send_message` function is called with the message, specifying the template name as "confirm_email.html". The message sending is performed as a background task using the `bg_task.add_task` function.
+
+    Finally, a JSON response is returned with a success message indicating that the email has been sent to the specified email address.
     """
     user_db: UserORM = await db.execute(select(UserORM).filter(UserORM.email == email)).scalars().first()
     if not user_db:
@@ -108,37 +101,28 @@ async def send_confirmation(
     return {"message": f"email has been sent to {email.email}"}
 
 
-@router.get('/confirm/{token:str}',
-            dependencies=[Depends(RateLimiter(times=2, seconds=10))])
+@router.get('/confirm/{token:str}')
 async def confirm_email(
         db: Annotated[AsyncSession, Depends(get_db)],
         token: str
 ) -> Any:
     """
-    Confirm the email associated with the given token.
+    Confirms an email address by updating the user's email_confirmed flag in the database.
 
     Parameters:
-        - db (Annotated[AsyncSession, Depends(get_db)]): The asynchronous session dependency for interacting with
-        the database.
-        - token (str): The token used to confirm the email.
+        db (Annotated[AsyncSession, Depends(get_db)]): The asynchronous database session.
+        token (str): The confirmation token associated with the email address.
 
     Returns:
-        - Any: The response object containing the result of the email confirmation.
+        Any: A JSON response indicating the success or failure of the email confirmation.
 
     Raises:
-        - JSONResponse: If the email is already confirmed.
+        None
 
-    Dependencies:
-        - Depends(RateLimiter(times=2, seconds=10)): A rate limiter dependency to limit the number of requests per
-        time interval.
-
-    Steps:
-        1. Retrieve the user associated with the given token from the database.
-        2. If the user's email is already confirmed, return a JSONResponse with a 409 status code and a details message.
-        3. Set the email_confirmed attribute of the user to True.
-        4. Commit the changes to the database.
-        5. Return a JSONResponse with a 200 status code and a details message indicating the successful confirmation
-        of the email.
+    If the email address is already confirmed, returns a JSON response with a status code of 409
+    and a message indicating that the email is already confirmed. Otherwise, updates the
+    email_confirmed flag to True and returns a JSON response with a status code of 200 and a
+    message indicating that the email has been confirmed.
     """
     user: UserORM = await auth_service.get_access_user(token=token, db=db)
     if user.email_confirmed:

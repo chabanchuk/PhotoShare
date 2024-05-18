@@ -6,12 +6,11 @@ import bcrypt
 from fastapi import security, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 from starlette import status
 
-from src.user_profile.orm import UserORM
-from src.database import get_db
-from src.settings import settings
+from user_profile.orm import UserORM
+from database import get_db
+from settings import settings
 
 Scope: TypeAlias = Literal['access_token', 'refresh_token', 'email_token']
 
@@ -179,7 +178,7 @@ class Authentication:
                                  live_time=live_time,
                                  scope="email_token")
 
-    def get_user(
+    async def get_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
             db: Annotated[AsyncSession, Depends(get_db)],
@@ -254,7 +253,7 @@ class Authentication:
                 detail="Invalid token scope"
             )
 
-        user = db.execute(select(UserORM).filter(UserORM.email == email)).scalars().first()
+        user = await db.execute(select(UserORM).filter(UserORM.email == email)).scalars().first()
 
         if user is None:
             raise HTTPException(
@@ -266,7 +265,7 @@ class Authentication:
                 int(payload.get("exp"))
                 <= int(datetime.timestamp(datetime.now(timezone.utc)))]):
             user.loggedin = False
-            db.commit()
+            await db.commit()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token expired. Use /auth/login to get new tokens"
@@ -280,7 +279,7 @@ class Authentication:
             detail="User not logged in. Use /auth/login"
         )
 
-    def get_access_user(
+    async def get_access_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
             db: Annotated[AsyncSession, Depends(get_db)]
@@ -297,7 +296,8 @@ class Authentication:
         """
         return self.get_user(
             token=token,
-            db=db
+            db=db,
+            scope="access_token"
         )
 
     async def get_refresh_user(
@@ -321,7 +321,7 @@ class Authentication:
             scope="refresh_token"
         )
 
-    def get_email_user(
+    async def get_email_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
             db: Annotated[AsyncSession, Depends(get_db)]
