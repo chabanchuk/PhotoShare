@@ -54,6 +54,8 @@ class UserORM(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # username will be used to store email for OAuth2 compatibility
+    email: Mapped[Optional[str]] = mapped_column(String(80),
+                                                 unique=True)
     username: Mapped[str] = mapped_column(unique=True)
     # password contains hashed password
     password: Mapped[str] = mapped_column(nullable=False)
