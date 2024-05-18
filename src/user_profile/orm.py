@@ -1,10 +1,13 @@
 from datetime import datetime, timezone, date
-from typing import Optional, Any, List
+from typing import Optional, Any, List, TypeAlias, Literal
 
 from sqlalchemy import String, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base, get_db
+
+# Role typealias contains list of possible roles
+Role: TypeAlias = Literal['user', 'moderator', 'admin']
 
 
 async def full_name_calculated_default(context) -> str:
@@ -53,16 +56,19 @@ class UserORM(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # username will be used to store email for OAuth2 compatibility
+
     email: Mapped[Optional[str]] = mapped_column(String(80),
                                                  unique=True)
+    # username will be used to store email for OAuth2 compatibility
     username: Mapped[str] = mapped_column(unique=True)
     # password contains hashed password
     password: Mapped[str] = mapped_column(nullable=False)
+    loggedin: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
     )
     profile: Mapped["ProfileORM"] = relationship(back_populates="user")
+    role: Mapped[Role] = mapped_column(String(20), default="user")
 
 
 class ProfileORM(Base):
