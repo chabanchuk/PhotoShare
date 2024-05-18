@@ -30,6 +30,7 @@ from photo import orm
 from tags import orm
 from user_profile import orm
 from database import Base
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
