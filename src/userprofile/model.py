@@ -14,7 +14,8 @@ class UserAuthModel(BaseModel):
     """
     Model that is used to meet OAuth2 requirements
     """
-    username: EmailStr
+    username: str
+    email: EmailStr
     password: str
 
 
