@@ -254,7 +254,8 @@ class Authentication:
                 detail="Invalid token scope"
             )
 
-        user = await db.execute(select(UserORM).filter(UserORM.email == email)).scalars().first()
+        db_response = await db.execute(select(UserORM).filter(UserORM.email == email))
+        user = db_response.scalars().first()
 
         if user is None:
             raise HTTPException(

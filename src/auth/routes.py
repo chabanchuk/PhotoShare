@@ -93,26 +93,30 @@ async def login(
     Handles the login functionality for the API.
 
     Args:
-        user (OAuth2PasswordRequestForm, optional): The user credentials for login. Defaults to Depends(OAuth2PasswordRequestForm).
+        user (OAuth2PasswordRequestForm, optional): The user credentials for login.
+            Defaults to Depends(OAuth2PasswordRequestForm).
         db (AsyncSession, optional): The database session. Defaults to Depends(get_db).
 
     Returns:
-        Any: The response containing the access token, refresh token, email token, and token type.
+        Any: The response containing the access token, refresh token, email token,
+            and token type.
 
     Raises:
         JSONResponse: If the user is not found, the credentials are invalid, or the email is not confirmed.
     """
-    user_db: UserORM = await db.execute(select(UserORM).filter(UserORM.email == user.email)).scalars().first()
+    db_response = await db.execute(select(UserORM).filter(UserORM.username == user.username))
+    user_db: UserORM = db_response.scalars().first()
+
     if not user_db:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
                 "details": [
-                    {"msg": f"User with email: {user.email} not found"}
+                    {"msg": f"User with username: {user.username} not found"}
                 ]}
         )
 
-    if not auth_service.verify_password(user.password, user_db.hashed_pwd):
+    if not auth_service.verify_password(user.password, user_db.password):
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={
@@ -121,19 +125,19 @@ async def login(
                 ]}
         )
 
-    if not user_db.email_confirmed:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={
-                'details': [
-                    {"msg": "Email not confirmed."}
-                ]
-            }
-        )
+    # if not user_db.email_confirmed:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         content={
+    #             'details': [
+    #                 {"msg": "Email not confirmed."}
+    #             ]
+    #         }
+    #     )
 
-    access_token = auth_service.create_access_token(user.email)
-    refresh_token = auth_service.create_refresh_token(user.email)
-    email_token = auth_service.create_email_token(user.email)
+    access_token = auth_service.create_access_token(user_db.email)
+    refresh_token = auth_service.create_refresh_token(user_db.email)
+    email_token = auth_service.create_email_token(user_db.email)
     user_db.loggedin = True
     await db.commit()
     return JSONResponse(

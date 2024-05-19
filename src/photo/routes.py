@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form
-from requests import HTTPError
+# from requests import HTTPError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import cloudinary
@@ -11,7 +11,7 @@ from starlette.responses import Response
 from database import get_db
 from photo.model import PhotoCreate, PhotoResponse, PhotoUpdate, PhotoModel, TransformRequest
 from photo.orm import PhotoORM
-from user_profile.orm import ProfileORM
+from userprofile.orm import ProfileORM
 from settings import settings
 
 
