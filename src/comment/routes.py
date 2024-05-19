@@ -6,7 +6,7 @@ from database import get_db
 from comment.model import CommentModel, CommentCreate, CommentUpdate
 from comment.orm import CommentORM
 from photo.orm import PhotoORM
-from user_profile.orm import ProfileORM
+from userprofile.orm import ProfileORM
 
 router = APIRouter(
     prefix="/comments",

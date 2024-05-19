@@ -7,7 +7,7 @@ from pydantic import (BaseModel,
                       computed_field,
                       Field, PositiveInt, ConfigDict)
 
-from user_profile.orm import Role
+from userprofile.orm import Role
 
 
 class UserAuthModel(BaseModel):

@@ -9,12 +9,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 from starlette.requests import Request
 
-from user_profile.model import TokenModel, UserAuthModel, UserDBModel
+from userprofile.model import TokenModel, UserAuthModel, UserDBModel
 from database import get_db
 
 from auth.service import Authentication
 from email_service.routes import send_confirmation, EmailModel
-from user_profile.orm import UserORM
+from userprofile.orm import UserORM
 
 router = APIRouter(prefix="/auth",
                    tags=["Authentication"])
