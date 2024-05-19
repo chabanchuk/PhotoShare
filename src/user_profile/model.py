@@ -23,7 +23,11 @@ class UserDBModel(UserAuthModel):
     Model that stores user data in DB
     """
     id: PositiveInt
+    hashed_pwd: str = Field(max_length=255)
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
+
+    class Config:
+        orm_mode = True
 
 
 class UserProfileModel(BaseModel):
@@ -53,6 +57,12 @@ class UserProfileModel(BaseModel):
         lname = ' ' + self.last_name if self.last_name else ''
         return self.first_name + lname
 
+
+class TokenModel(BaseModel):
+    access_token: str
+    refresh_token: str
+    email_token: str
+    token_type: str = "bearer"
 
 class UserPublicProfileModel(BaseModel):
     """
