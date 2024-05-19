@@ -20,16 +20,25 @@ class UserAuthModel(BaseModel):
     password: str
 
 
+class UserRegisterModel(BaseModel):
+    """
+    Model that is used to meet OAuth2 requirements
+    """
+    username: str
+    email: EmailStr
+    password: str
+
+
 class UserDBModel(UserAuthModel):
     """
     Model that stores user data in DB
     """
-    id: PositiveInt
-    hashed_pwd: str = Field(max_length=255)
-    registered_at: datetime = Field(default=datetime.now(timezone.utc))
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    id: PositiveInt
+    email: EmailStr
+    password: str = Field(max_length=255)
+    registered_at: datetime = Field(default=datetime.now(timezone.utc))
 
 
 class UserProfileModel(BaseModel):
