@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.responses import JSONResponse
 
-from user_profile.orm import UserORM
+from userprofile.orm import UserORM
 from settings import settings
 from auth.service import Authentication
 from database import get_db

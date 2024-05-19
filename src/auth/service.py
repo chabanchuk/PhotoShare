@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from user_profile.orm import UserORM
+from userprofile.orm import UserORM
 from database import get_db
 from settings import settings
 

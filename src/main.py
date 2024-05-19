@@ -8,7 +8,7 @@ from auth.routes import router as auth_router
 from email_service.routes import router as email_router
 from comment.routes import router as comment_router
 from photo.routes import router as photo_router
-from user_profile.routes import router as user_router
+from userprofile.routes import router as user_router
 from frontend.routes import router as frontend_router
 from tags.routes import router as tags_router
 

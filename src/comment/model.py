@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, Field, PositiveInt, ConfigDict
 from photo.model import PhotoModel
-from user_profile.model import UserPublicProfileModel
+from userprofile.model import UserPublicProfileModel
 
 
 class CommentBase(BaseModel):

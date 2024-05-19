@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 
 from database import get_db
 from auth.service import Authentication as auth_service
-from user_profile.model import UserPublicProfileModel
-from user_profile.orm import ProfileORM, UserORM
+from userprofile.model import UserPublicProfileModel
+from userprofile.orm import ProfileORM, UserORM
 
 
 router = APIRouter(prefix="/user", tags=["user profile"])
