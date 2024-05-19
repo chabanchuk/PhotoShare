@@ -8,10 +8,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import selectinload
 
 from database import get_db
-from auth.service import Authentication as auth_service
+from auth.service import Authentication
 from userprofile.model import UserPublicProfileModel, UserProfileModel
 from userprofile.orm import ProfileORM, UserORM
 
+auth_service = Authentication()
 
 router = APIRouter(prefix="/user", tags=["user profile"])
 
@@ -105,10 +106,10 @@ async def get_user_profile(
             response_model=UserProfileModel)
 async def get_my_profile(
         db: Annotated[AsyncSession, Depends(get_db)],
-        user: UserORM = Depends(auth_service.get_access_user)
+        user: Annotated[UserORM, Depends(auth_service.get_access_user)]
 ) -> Any:
     """
-    Retrieves public profile by username
+    Retrieves profile of signed user
     Args:
         db (AsyncSession): session object used for database operations
         user (UserORM): user object of authenticated user
@@ -116,8 +117,23 @@ async def get_my_profile(
         UserProfileModel: full  profile of logged user
         JSONResponse: error message if no profiles found
     """
-
-    return {"message": "My profile"}
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)\
+        .options(
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos),
+        selectinload(ProfileORM.user)
+    )
+    db_response = await db.execute(stmnt)
+    profile = db_response.scalars().first()
+    if profile is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "Profile not found"}
+        )
+    profile_dump = dict(**profile.__dict__)
+    profile_dump['username'] = user.username
+    profile_dump['email'] = user.email
+    return UserProfileModel(**profile_dump)
 
 
 @router.post("/profile/me")

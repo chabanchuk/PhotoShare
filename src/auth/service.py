@@ -296,7 +296,7 @@ class Authentication:
         Returns:
             Any: The user retrieved using the token and database session.
         """
-        return self.get_user(
+        return await self.get_user(
             token=token,
             db=db,
             scope="access_token"
@@ -317,7 +317,7 @@ class Authentication:
         Returns:
             Any: The user retrieved using the token and database session with scope set to "refresh_token".
         """
-        return self.get_user(
+        return await self.get_user(
             token=token,
             db=db,
             scope="refresh_token"
@@ -338,7 +338,7 @@ class Authentication:
         Returns:
             Any: The user information retrieved using the provided token and database session.
         """
-        return self.get_user(
+        return await self.get_user(
             token=token,
             db=db,
             scope="email_token"
