@@ -7,6 +7,8 @@ from pydantic import (BaseModel,
                       computed_field,
                       Field, PositiveInt, ConfigDict)
 
+from comment.model import CommentModel
+from photo.model import PhotoModel
 from userprofile.orm import Role
 
 
@@ -63,6 +65,7 @@ class TokenModel(BaseModel):
     refresh_token: str
     email_token: str
     token_type: str = "bearer"
+
 
 class UserPublicProfileModel(BaseModel):
     """

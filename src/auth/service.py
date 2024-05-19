@@ -342,3 +342,8 @@ class Authentication:
             db=db,
             scope="email_token"
         )
+
+
+if __name__ == "__main__":
+    auth_service = Authentication()
+    print(auth_service.get_hash_password("password"))

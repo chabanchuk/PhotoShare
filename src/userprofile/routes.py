@@ -101,23 +101,23 @@ async def get_user_profile(
     return UserPublicProfileModel(**profile_dump)
 
 
-# @router.get("/profile/me",
-#             response_model=UserProfileModel)
-# async def get_my_profile(
-#         db: Annotated[AsyncSession, Depends(get_db)],
-#         user: UserORM = Depends(auth_service.get_access_user)
-# ) -> Any:
-#     """
-#     Retrieves public profile by username
-#     Args:
-#         db (AsyncSession): session object used for database operations
-#         user (UserORM): user object of authenticated user
-#     Returns:
-#         UserProfileModel: full  profile of logged user
-#         JSONResponse: error message if no profiles found
-#     """
-#
-#     return {"message": "My profile"}
+@router.get("/profile/me",
+            response_model=UserProfileModel)
+async def get_my_profile(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: UserORM = Depends(auth_service.get_access_user)
+) -> Any:
+    """
+    Retrieves public profile by username
+    Args:
+        db (AsyncSession): session object used for database operations
+        user (UserORM): user object of authenticated user
+    Returns:
+        UserProfileModel: full  profile of logged user
+        JSONResponse: error message if no profiles found
+    """
+
+    return {"message": "My profile"}
 
 
 @router.post("/profile/me")

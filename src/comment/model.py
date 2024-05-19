@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Type, Annotated
 from pydantic import BaseModel, Field, PositiveInt, ConfigDict
-from photo.model import PhotoModel
-from userprofile.model import UserPublicProfileModel
+import photo.model as photo_models
+import userprofile.model as user_models
 
 
 class CommentBase(BaseModel):
@@ -34,5 +34,5 @@ class CommentModel(CommentBase):
     id: PositiveInt
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
-    author: UserPublicProfileModel
-    photo: PhotoModel
+    author: Annotated["UserProfileModel", Type["UserProfileModel"]]
+    photo: Annotated["PhotoModel", Type["PhotoModel"]]
