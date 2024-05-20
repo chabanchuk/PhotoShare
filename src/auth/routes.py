@@ -31,29 +31,8 @@ async def new_user(
         db: Annotated[AsyncSession, Depends(get_db)],
         bg_task: BackgroundTasks
 ) -> Any:
-    """
-    Creates a new user with the provided authentication information.
-
-    Parameters:
-        - user (UserAuthModel): The authentication information of the user.
-        - db (Annotated[AsyncSession, Depends(get_db)]): The database session.
-        - bg_task (BackgroundTasks): The background tasks to be executed.
-
-    Returns:
-        - Any: A JSON response with the newly created user's information if the user was successfully created.
-              If the user already exists, returns a JSON response with a 409 status code and a details message.
-
-    Raises:
-        - None
-
-    Note:
-        - This function checks if the user already exists in the database before creating a new user.
-        - The password is hashed before being stored in the database.
-        - The email confirmation process is triggered after creating the user.
-        - The newly created user's information is returned in the JSON response.
-        - The confirmation message is also included in the JSON response.
-    """
-    exists = await db.execute(select(UserORM).filter(UserORM.email == user.email)).scalars().first()
+    exists = await db.execute(select(UserORM).filter(UserORM.email == user.email))
+    exists = exists.scalars().first()
     if exists:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
@@ -65,7 +44,8 @@ async def new_user(
 
     hashed_pwd = auth_service.get_hash_password(user.password)
     user = UserORM(email=user.email,
-                   hashed_pwd=hashed_pwd)
+                   username=user.username,
+                   password=hashed_pwd)
     db.add(user)
     await db.commit()
 
@@ -74,8 +54,8 @@ async def new_user(
                                   bg_task=bg_task,
                                   db=db)
 
-    ret_user = await db.execute(select(UserORM).filter(UserORM.email == user.email)).scalars().first()
-
+    ret_user = await db.execute(select(UserORM).filter(UserORM.email == user.email))
+    ret_user = ret_user.scalars().first()
     return JSONResponse(
         status_code=201,
         content={**UserDBModel.from_orm(ret_user).dict(exclude={"id"}),
@@ -138,6 +118,7 @@ async def login(
     access_token = auth_service.create_access_token(user_db.email)
     refresh_token = auth_service.create_refresh_token(user_db.email)
     email_token = auth_service.create_email_token(user_db.email)
+
     user_db.loggedin = True
     await db.commit()
     return JSONResponse(
@@ -180,9 +161,9 @@ async def refresh(
             content={"details": "Invalid credentials"}
         )
     email_str = str(user.email)
-    access_token = auth_service.create_access_token(email_str)
-    refresh_token = request.headers.get("Authorization").split(" ")[1]
-    email_token = auth_service.create_email_token(email_str)
+    access_token = await auth_service.create_access_token(email_str)
+    refresh_token = await request.headers.get("Authorization").split(" ")[1]
+    email_token = await auth_service.create_email_token(email_str)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"access_token": access_token,
@@ -217,4 +198,3 @@ async def logout(
         return {"details": "User logged out"}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {e}")
-
