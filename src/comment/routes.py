@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from typing import List
 
 from database import get_db
@@ -15,17 +16,17 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[CommentModel])
-def read_comments(db: Session = Depends(get_db), skip: int = 0, limit: int = 100):
-    comments = db.query(CommentORM).offset(skip).limit(limit).all()
-    # return comments
-    print(comments)
+async def read_comments(db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 100):
+    result = await db.execute(select(CommentORM).offset(skip).limit(limit))
+    comments = result.scalars().all()
     return [CommentModel.from_orm(comment) for comment in comments]
 
-
 @router.post("/", response_model=CommentModel)
-def create_comment(comment: CommentCreate, db: Session = Depends(get_db)):
-    author = db.query(ProfileORM).filter(ProfileORM.id == comment.author_profile_id).first()
-    photo = db.query(PhotoORM).filter(PhotoORM.id == comment.photo_id).first()
+async def create_comment(comment: CommentCreate, db: AsyncSession = Depends(get_db)):
+    author_result = await db.execute(select(ProfileORM).where(ProfileORM.id == comment.author_profile_id))
+    author = author_result.scalars().first()
+    photo_result = await db.execute(select(PhotoORM).where(PhotoORM.id == comment.photo_id))
+    photo = photo_result.scalars().first()
 
     if not author:
         raise HTTPException(status_code=404, detail="Author not found")
@@ -38,22 +39,22 @@ def create_comment(comment: CommentCreate, db: Session = Depends(get_db)):
         photo=photo
     )
     db.add(db_comment)
-    db.commit()
-    db.refresh(db_comment)
+    await db.commit()
+    await db.refresh(db_comment)
     return CommentModel.from_orm(db_comment)
 
-
 @router.get("/{comment_id}", response_model=CommentModel)
-def read_comment(comment_id: int, db: Session = Depends(get_db)):
-    db_comment = db.query(CommentORM).filter(CommentORM.id == comment_id).first()
+async def read_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(CommentORM).where(CommentORM.id == comment_id))
+    db_comment = result.scalars().first()
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
     return CommentModel.from_orm(db_comment)
 
-
 @router.put("/{comment_id}", response_model=CommentModel)
-def update_comment(comment_id: int, comment: CommentUpdate, db: Session = Depends(get_db)):
-    db_comment = db.query(CommentORM).filter(CommentORM.id == comment_id).first()
+async def update_comment(comment_id: int, comment: CommentUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(CommentORM).where(CommentORM.id == comment_id))
+    db_comment = result.scalars().first()
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
 
@@ -61,15 +62,15 @@ def update_comment(comment_id: int, comment: CommentUpdate, db: Session = Depend
         setattr(db_comment, var, value) if value else None
 
     db.add(db_comment)
-    db.commit()
-    db.refresh(db_comment)
+    await db.commit()
+    await db.refresh(db_comment)
     return CommentModel.from_orm(db_comment)
 
-
 @router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_comment(comment_id: int, db: Session = Depends(get_db)):
-    db_comment = db.query(CommentORM).filter(CommentORM.id == comment_id).first()
+async def delete_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(CommentORM).where(CommentORM.id == comment_id))
+    db_comment = result.scalars().first()
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
-    db.delete(db_comment)
-    db.commit()
+    await db.delete(db_comment)
+    await db.commit()
