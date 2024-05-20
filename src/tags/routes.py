@@ -7,7 +7,6 @@ from tags.orm import TagORM
 from typing import List, Any
 from auth.service import Authentication
 from userprofile.orm import UserORM
-#from pydantic import Annotated
 
 router = APIRouter(
     prefix="/tags",
@@ -31,7 +30,7 @@ def require_role(allowed_roles: List[str]):
 async def create_or_get_tag(
     tag: TagCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(["registered user", "moderator", "admin"]))
+    current_user: UserORM = Depends(require_role(["user", "moderator", "admin"]))
 ):
     async with db as session:
         try:
@@ -69,7 +68,7 @@ async def update_tag(
     tag_id: int,
     tag: TagCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(["registered user", "moderator", "admin"]))
+    current_user: UserORM = Depends(require_role(["user", "moderator", "admin"]))
 ):
     async with db as session:
         result = await session.execute(select(TagORM).filter(TagORM.id == tag_id))
@@ -82,13 +81,13 @@ async def update_tag(
         await session.refresh(db_tag)
         return db_tag
     
-"""
+
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tag(
     tag_id: int,
-    current_user: Annotated[UserORM, Depends(auth_service.get_access_user)],
-    db: Annotated[AsyncSession, Depends(get_db)]
-) -> Any:
+    current_user: UserORM = Depends(auth_service.get_access_user),
+    db: AsyncSession = Depends(get_db)
+):
     tag = await db.execute(select(TagORM).filter(TagORM.id == tag_id))
     tag = tag.scalars().first()
 
@@ -102,4 +101,3 @@ async def delete_tag(
     await db.commit()
 
     return {"detail": "Tag deleted successfully"}
-"""
