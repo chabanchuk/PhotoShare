@@ -172,6 +172,7 @@ class Authentication:
 
         user = await db.execute(select(UserORM).filter(UserORM.email == email))
         user = user.scalars().first()
+
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -211,7 +212,7 @@ class Authentication:
         Returns:
             Any: The user retrieved using the token and database session.
         """
-        return self.get_user(
+        return await self.get_user(
             token=token,
             db=db,
             scope="access_token"
@@ -232,7 +233,7 @@ class Authentication:
         Returns:
             Any: The user retrieved using the token and database session with scope set to "refresh_token".
         """
-        return self.get_user(
+        return await self.get_user(
             token=token,
             db=db,
             scope="refresh_token"
@@ -253,8 +254,9 @@ class Authentication:
         Returns:
             Any: The user information retrieved using the provided token and database session.
         """
-        return self.get_user(
+        return await self.get_user(
             token=token,
             db=db,
             scope="email_token"
         )
+
