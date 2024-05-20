@@ -41,4 +41,9 @@ sessionmanager = DatabaseSessionManager(settings.sqlalchemy_url)
 
 async def get_db():
     async with sessionmanager.session() as session:
-        yield session
+        try:
+            yield session
+        except Exception as err:
+            print(err)
+            await session.rollback()
+

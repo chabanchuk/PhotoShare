@@ -4,7 +4,9 @@ from typing import Optional, Any, List, TypeAlias, Literal
 from sqlalchemy import String, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from comment.orm import CommentORM
 from database import Base, get_db
+from photo.orm import PhotoORM
 
 # Role typealias contains list of possible roles
 Role: TypeAlias = Literal['user', 'moderator', 'admin']
@@ -56,7 +58,6 @@ class UserORM(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-
     email: Mapped[Optional[str]] = mapped_column(String(80),
                                                  unique=True)
     # username will be used to store email for OAuth2 compatibility
@@ -89,5 +90,5 @@ class ProfileORM(Base):
     birthday: Mapped[Optional[date]] = mapped_column(Date())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[UserORM] = relationship(back_populates='profile')
-    photos: Mapped[List["PhotoORM"]] = relationship(back_populates='owner')
-    comment: Mapped[List["CommentORM"]] = relationship(back_populates="author")
+    photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
+    comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")

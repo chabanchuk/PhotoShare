@@ -28,7 +28,7 @@ alembic = "^1.13.1"
 aiosqlite = "^0.20.0"
 asyncpg = "^0.29.0"
 user-profile = "^1.0.0"
-
+fastapi-mail = "^1.4.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"

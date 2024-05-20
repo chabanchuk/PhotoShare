@@ -4,9 +4,7 @@ from sqlalchemy import ForeignKey, Table, Column
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import String
 
-# from user_profile.orm import ProfileORM
-# from comment.orm import CommentORM
-# from tags.orm import TagORM
+
 from database import Base
 
 photo_tag_association_table = Table(
@@ -23,8 +21,9 @@ class PhotoORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     description: Mapped[str] = mapped_column(String, nullable=False)
     url: Mapped[str] = mapped_column(String, nullable=False)
+    public_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     author_fk: Mapped[int] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
-    author: Mapped["ProfileORM"] = relationship("ProfileORMr", back_populates="photos")
-    comments: Mapped[List["CommentORM"]] = relationship(back_populates="photos")
+    author: Mapped["ProfileORM"] = relationship("ProfileORM", back_populates="photos")
+    comments: Mapped[List["CommentORM"]] = relationship(back_populates="photo")
     tags: Mapped[List["TagORM"]] = relationship(secondary=photo_tag_association_table, back_populates="photos")
 
