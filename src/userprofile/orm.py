@@ -12,7 +12,7 @@ from photo.orm import PhotoORM
 Role: TypeAlias = Literal['user', 'moderator', 'admin']
 
 
-async def full_name_calculated_default(context) -> str:
+def full_name_calculated_default(context) -> str:
     """
     Calculates default (creation time) value for full_name field
 
@@ -22,8 +22,8 @@ async def full_name_calculated_default(context) -> str:
     Returns:
          str: strings with concatenated first and last name
     """
-    first = await context.get_current_parameters().get('first_name')
-    last = await context.get_current_parameters().get('last_name')
+    first = context.get_current_parameters().get('first_name')
+    last = context.get_current_parameters().get('last_name')
     last = f" {last}" if last is not None else ""
     return f"{first}{last}"
 
@@ -38,9 +38,9 @@ async def full_name_calculated_update(context) -> Any:
     Returns:
          str: strings with concatenated first and last name
     """
-    first = await context.get_current_parameters().get('first_name')
-    last = await context.get_current_parameters().get('last_name')
-    id_ = await context.get_current_parameters().get('id_1')
+    first = context.get_current_parameters().get('first_name')
+    last = context.get_current_parameters().get('last_name')
+    id_ = context.get_current_parameters().get('id_1')
     if id_ is None:
         return
     with get_db() as session:
@@ -77,7 +77,7 @@ class ProfileORM(Base):
     ORM mapping for ProfileData
     """
     __tablename__ = "profiles"
-
+    # Table columns
     id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(20))
     last_name: Mapped[Optional[str]] = mapped_column(String(20))
@@ -85,10 +85,9 @@ class ProfileORM(Base):
                                            unique=True,
                                            default=full_name_calculated_default,
                                            onupdate=full_name_calculated_update)
-    email: Mapped[Optional[str]] = mapped_column(String(80),
-                                                 unique=True)
     birthday: Mapped[Optional[date]] = mapped_column(Date())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Realtions
     user: Mapped[UserORM] = relationship(back_populates='profile')
     photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
     comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")

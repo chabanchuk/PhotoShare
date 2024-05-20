@@ -2,15 +2,20 @@ from typing import List, Annotated, Any
 
 from fastapi import Depends, status
 from fastapi.routing import APIRouter
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import selectinload
 
 from database import get_db
 from auth.service import Authentication
-from userprofile.model import UserPublicProfileModel, UserProfileModel
+from userprofile.model import (UserPublicProfileModel,
+                               UserProfileModel,
+                               UserEditableProfileModel,
+                               UserDBModel)
 from userprofile.orm import ProfileORM, UserORM
+
+import utils.model_utilities as model_util
 
 auth_service = Authentication()
 
@@ -136,9 +141,70 @@ async def get_my_profile(
     return UserProfileModel(**profile_dump)
 
 
-@router.post("/profile/me")
-async def ceate_my_profile():
-    return {"message": "My profile created"}
+@router.post("/profile/me",
+             responses={
+                 409: {"detail": "Profile already exists."},
+                 422: {"detail": "Could not process empty data."},
+                 201: {"model": UserProfileModel}
+             })
+async def ceate_my_profile(
+        profile: UserEditableProfileModel,
+        user: Annotated[UserORM, Depends(auth_service.get_access_user)],
+        db: Annotated[AsyncSession, Depends(get_db)]
+) -> Any:
+    """
+    Fill authenticated user profile if not exists
+
+        Args:
+            profile (UserEditableProfileModel): Model with user editable profile data
+            user (UserORM): user object of authenticated user
+            db (AsyncSession): session object used for database operations
+
+        Returns:
+            UserProfileModel or JSONResponse with 409 status code if profile exists
+    """
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
+    db_res = await db.execute(stmnt)
+    db_profile = db_res.scalars().first()
+
+    if db_profile:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": (f"Profile for user {user.username} already exists."
+                           + " Use /user/profile/edit with POST method")
+            }
+        )
+
+    if model_util.is_model_empty(profile):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "Could not process empty data."
+            }
+        )
+
+    user_update = profile.model_dump(exclude_unset=True,
+                                     exclude={"first_name",
+                                              "last_name",
+                                              "birthday"})
+    stmnt = (
+        update(UserORM)
+        .where(UserORM.id == user.id)
+        .values(**user_update)
+    )
+    res = await db.execute(stmnt)
+
+    profile_orm = ProfileORM(**profile.model_dump(
+        exclude_unset=True,
+        exclude={"username", "email"}),
+        )
+    profile_orm.user_id = user.id
+    db.add(profile_orm)
+    await db.commit()
+    await db.refresh(profile_orm)
+
+    return {"Profile filled"}
 
 
 @router.put("/profile/me/{field}")

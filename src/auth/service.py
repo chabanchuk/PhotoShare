@@ -62,7 +62,7 @@ class Authentication:
             salt=self.HASH_SERVICE.gensalt()
         ).decode()
 
-    async def create_token(
+    def create_token(
             self,
             email: str,
             scope: Scope,
@@ -91,7 +91,7 @@ class Authentication:
 
         return jwt_token
 
-    async def create_access_token(
+    def create_access_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=1)
@@ -100,7 +100,7 @@ class Authentication:
                                  live_time=live_time,
                                  scope="access_token")
 
-    async def create_refresh_token(
+    def create_refresh_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=7)
@@ -239,7 +239,7 @@ class Authentication:
             scope="refresh_token"
         )
 
-    def get_email_user(
+    async def get_email_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
             db: Annotated[AsyncSession, Depends(get_db)]
