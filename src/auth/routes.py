@@ -48,18 +48,19 @@ async def new_user(
                    password=hashed_pwd)
     db.add(user)
     await db.commit()
+    await db.refresh(user)
 
-    email_param = EmailModel(email=user.email)
-    res = await send_confirmation(email=email_param,
-                                  bg_task=bg_task,
-                                  db=db)
+    # email_param = EmailModel(email=user.email)
+    # res = await send_confirmation(email=email_param,
+    #                               bg_task=bg_task,
+    #                               db=db)
 
     ret_user = await db.execute(select(UserORM).filter(UserORM.email == user.email))
     ret_user = ret_user.scalars().first()
     return JSONResponse(
         status_code=201,
-        content={**UserDBModel.from_orm(ret_user).dict(exclude={"id"}),
-                 'confirmation': res['message']}
+        content={**UserDBModel.from_orm(ret_user).model_dump(exclude={"id", "registered_at"}),
+                 "registered_at": str(ret_user.registered_at)}
     )
 
 
