@@ -7,7 +7,7 @@ from tags.orm import TagORM
 from typing import List, Any
 from auth.service import Authentication
 from userprofile.orm import UserORM
-from pydantic import Annotated
+#from pydantic import Annotated
 
 router = APIRouter(
     prefix="/tags",
@@ -81,7 +81,8 @@ async def update_tag(
         await session.commit()
         await session.refresh(db_tag)
         return db_tag
-
+    
+"""
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tag(
     tag_id: int,
@@ -101,3 +102,4 @@ async def delete_tag(
     await db.commit()
 
     return {"detail": "Tag deleted successfully"}
+"""

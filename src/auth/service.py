@@ -239,7 +239,7 @@ class Authentication:
             scope="refresh_token"
         )
 
-    def get_email_user(
+    async def get_email_user(
             self,
             token: Annotated[str, Depends(oauth2_schema)],
             db: Annotated[AsyncSession, Depends(get_db)]
