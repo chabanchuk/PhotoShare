@@ -1,8 +1,8 @@
-"""Init
+"""Init_again
 
-Revision ID: ca0a1948b71f
+Revision ID: 7ed6cfa6a87c
 Revises: 
-Create Date: 2024-05-18 10:10:25.148770
+Create Date: 2024-05-20 10:34:12.900275
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'ca0a1948b71f'
+revision: str = '7ed6cfa6a87c'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,7 +32,9 @@ def upgrade() -> None:
     sa.Column('email', sa.String(length=80), nullable=True),
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('password', sa.String(), nullable=False),
+    sa.Column('loggedin', sa.Boolean(), nullable=False),
     sa.Column('registered_at', sa.DateTime(), nullable=False),
+    sa.Column('role', sa.String(length=20), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')
@@ -54,9 +56,11 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('description', sa.String(), nullable=False),
     sa.Column('url', sa.String(), nullable=False),
+    sa.Column('public_id', sa.String(), nullable=False),
     sa.Column('author_fk', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['author_fk'], ['profiles.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('public_id')
     )
     op.create_table('comments',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -65,8 +69,8 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('author_fk', sa.Integer(), nullable=False),
     sa.Column('photo_fk', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['author_fk'], ['profiles.id'], ),
-    sa.ForeignKeyConstraint(['photo_fk'], ['photos.id'], ),
+    sa.ForeignKeyConstraint(['author_fk'], ['profiles.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['photo_fk'], ['photos.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_comments_id'), 'comments', ['id'], unique=False)

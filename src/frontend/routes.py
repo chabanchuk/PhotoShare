@@ -32,4 +32,4 @@ async def get_register_page(request: Request,
 
 @router.get('/htmx-test')
 async def htmx_test(request: Request):
-    return HTMLResponse("<h1>Hello from htmx</h1>")
+    return HTMLResponse('<h1 hx-get="/htmx-test" hx-trigger="click" hx-swap="afterend">Hello from htmx</h1>')

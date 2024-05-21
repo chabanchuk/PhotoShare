@@ -1,3 +1,4 @@
+from jose import jwt
 from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +26,7 @@ auth_service = Authentication()
 @router.post("/register",
              response_model=UserDBModel,
              responses={409: {"description": "User already exists"},
-                        201: {"model": UserDBModel}})
+                        201: {"description": "User created successfully"}})
 async def new_user(
         user: UserAuthModel,
         db: Annotated[AsyncSession, Depends(get_db)],
@@ -42,12 +43,13 @@ async def new_user(
                 ]}
         )
 
-    hashed_pwd = auth_service.get_hash_password(user.password)
+    password = auth_service.get_hash_password(user.password)
     user = UserORM(email=user.email,
                    username=user.username,
-                   password=hashed_pwd)
+                   password=password)
     db.add(user)
     await db.commit()
+    await db.refresh(user)
 
     email_param = EmailModel(email=user.email)
     res = await send_confirmation(email=email_param,
@@ -56,9 +58,11 @@ async def new_user(
 
     ret_user = await db.execute(select(UserORM).filter(UserORM.email == user.email))
     ret_user = ret_user.scalars().first()
+    user_db_model = UserDBModel.from_orm(ret_user)
+    user_db_model.registered_at = user_db_model.registered_at.isoformat()
     return JSONResponse(
         status_code=201,
-        content={**UserDBModel.from_orm(ret_user).dict(exclude={"id"}),
+        content={**user_db_model.dict(),
                  'confirmation': res['message']}
     )
 
@@ -66,27 +70,11 @@ async def new_user(
 @router.post("/login",
              response_model=TokenModel)
 async def login(
-        user: Annotated[OAuth2PasswordRequestForm, Depends()],
+        user: Annotated[OAuth2PasswordRequestForm, Depends(OAuth2PasswordRequestForm)],
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
-    """
-    Handles the login functionality for the API.
-
-    Args:
-        user (OAuth2PasswordRequestForm, optional): The user credentials for login.
-            Defaults to Depends(OAuth2PasswordRequestForm).
-        db (AsyncSession, optional): The database session. Defaults to Depends(get_db).
-
-    Returns:
-        Any: The response containing the access token, refresh token, email token,
-            and token type.
-
-    Raises:
-        JSONResponse: If the user is not found, the credentials are invalid, or the email is not confirmed.
-    """
-    db_response = await db.execute(select(UserORM).filter(UserORM.username == user.username))
-    user_db: UserORM = db_response.scalars().first()
-
+    user_db = await db.execute(select(UserORM).filter(UserORM.username == user.username))
+    user_db = user_db.scalars().first()
     if not user_db:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -115,10 +103,9 @@ async def login(
     #         }
     #     )
 
-    access_token = auth_service.create_access_token(user_db.email)
-    refresh_token = auth_service.create_refresh_token(user_db.email)
-    email_token = auth_service.create_email_token(user_db.email)
-
+    access_token = await auth_service.create_access_token(user.username)
+    refresh_token = await auth_service.create_refresh_token(user.username)
+    email_token = await auth_service.create_email_token(user.username)
     user_db.loggedin = True
     await db.commit()
     return JSONResponse(
@@ -160,10 +147,10 @@ async def refresh(
             status_code=status.HTTP_403_FORBIDDEN,
             content={"details": "Invalid credentials"}
         )
-    email_str = str(user.email)
-    access_token = await auth_service.create_access_token(email_str)
+
+    access_token = await auth_service.create_access_token(user.email)
     refresh_token = await request.headers.get("Authorization").split(" ")[1]
-    email_token = await auth_service.create_email_token(email_str)
+    email_token = await auth_service.create_email_token(user.email)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"access_token": access_token,
@@ -174,26 +161,21 @@ async def refresh(
 
 
 @router.get("/logout")
-async def logout(
-        user: Annotated[UserORM, Depends(auth_service.get_access_user)],
-        db: Annotated[AsyncSession, Depends(get_db)]
-) -> Any:
-    """
-    Logs out a user by setting the 'loggedin' attribute of the UserORM object to False.
+async def logout(token: Annotated[str, Depends(auth_service.oauth2_schema)],
+                 user: Annotated[UserORM, Depends(auth_service.get_access_user)],
+                 db: Annotated[AsyncSession, Depends(get_db)]
+                 ) -> Any:
 
-    Parameters:
-        user (Annotated[UserORM, Depends(auth_service.get_access_user)]): The UserORM object representing the user
-        to be logged out.
-        db (Annotated[AsyncSession, Depends(get_db)]): The AsyncSession object representing the database session.
-
-    Returns:
-        Any: A dictionary containing the details of the logout operation.
-
-    Raises:
-        HTTPException: If an internal server error occurs during the logout process.
-    """
     try:
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
         user.loggedin = False
+
+        payload = jwt.decode(token, auth_service.SECRET_256, algorithms=[auth_service.ACCESS_ALGORITHM])
+        expires_delta = payload["exp"] - payload["iat"]
+
+        await auth_service.add_to_blacklist(token, expires_delta, db)
         await db.commit()
         return {"details": "User logged out"}
     except Exception as e:
