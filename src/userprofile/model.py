@@ -7,8 +7,6 @@ from pydantic import (BaseModel,
                       computed_field,
                       Field, PositiveInt, ConfigDict)
 
-from comment.model import CommentModel
-from photo.model import PhotoModel
 from userprofile.orm import Role
 
 
@@ -53,8 +51,8 @@ class UserProfileModel(BaseModel):
     birthday: Optional[PastDate]
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
     role: Role = Field(default='user')
-    photos: Optional[List["PhotoModel"]] = []
-    comments: Optional[List["CommentModel"]] = []
+    photos: int = Field(default=0, ge=0)
+    comments: int = Field(default=0, ge=0)
 
     @computed_field
     @property
