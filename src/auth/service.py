@@ -260,25 +260,25 @@ class Authentication:
             scope="email_token"
         )
 
-    # async def add_to_blacklist(self, token: str, expires_delta: float,
-    #                            db: Annotated[AsyncSession, Depends(get_db)]):
-    #
-    #     expires_at = datetime.utcnow() + timedelta(seconds=expires_delta)
-    #     blacklist_token = BlacklistORM(token=token, expires_at=expires_at)
-    #     db.add(blacklist_token)
-    #     await db.commit()
-    #     await db.refresh(blacklist_token)
-    #
-    # async def is_blacklisted_token(self, token: str,
-    #                                db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
-    #
-    #     blacklist_token = await db.execute(select(BlacklistORM).filter(BlacklistORM.token == token))
-    #     blacklist_token = blacklist_token.scalars().first()
-    #     if blacklist_token:
-    #         if blacklist_token.expires_at < datetime.utcnow():
-    #             # Token has expired, remove from blacklist
-    #             await db.delete(blacklist_token)
-    #             await db.commit()
-    #             return False
-    #         return True
-    #     return False
+    async def add_to_blacklist(self, token: str, expires_delta: float,
+                               db: Annotated[AsyncSession, Depends(get_db)]):
+
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_delta)
+        blacklist_token = BlacklistORM(token=token, expires_at=expires_at)
+        db.add(blacklist_token)
+        await db.commit()
+        await db.refresh(blacklist_token)
+
+    async def is_blacklisted_token(self, token: str,
+                                   db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
+
+        blacklist_token = await db.execute(select(BlacklistORM).filter(BlacklistORM.token == token))
+        blacklist_token = blacklist_token.scalars().first()
+        if blacklist_token:
+            if blacklist_token.expires_at < datetime.utcnow():
+                # Token has expired, remove from blacklist
+                await db.delete(blacklist_token)
+                await db.commit()
+                return False
+            return True
+        return False
