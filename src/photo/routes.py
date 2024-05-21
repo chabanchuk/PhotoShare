@@ -1,18 +1,22 @@
 from typing import List, Optional
-
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form
+import io
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form, Query
 # from requests import HTTPError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import cloudinary
 from cloudinary.uploader import upload, destroy
+from sqlalchemy.orm import selectinload
 from starlette.responses import Response
-
+import qrcode
 from database import get_db
-from photo.model import PhotoCreate, PhotoResponse, PhotoUpdate, PhotoModel, TransformRequest
+from photo.model import  PhotoResponse, PhotoUpdate, PhotoModel, TransformRequest, PhotoCreateQR
 from photo.orm import PhotoORM
-from userprofile.orm import ProfileORM
+from userprofile.orm import ProfileORM, UserORM
 from settings import settings
+from io import BytesIO, StringIO
+import base64
+import qrcode.image.svg
 
 
 router = APIRouter(prefix='/photos', tags=["photos"])
@@ -24,6 +28,13 @@ cloudinary.config(
         api_secret=settings.cloudinary_api_secret,
         secure=True
     )
+
+
+async def get_photo(photo_id: int, db: AsyncSession):
+    query = select(PhotoORM).filter_by(id=photo_id)
+    result = await db.execute(query)
+    db_photo = result.scalars().first()
+    return db_photo
 
 
 @router.post("/", response_model=PhotoResponse, status_code=status.HTTP_201_CREATED)
@@ -45,7 +56,7 @@ async def create_photo(description: str = Form(), file: UploadFile = File(), db:
     return PhotoResponse.from_orm(db_photo)
 
 
-@router.post("/transform", response_model=PhotoResponse, status_code=status.HTTP_200_OK)
+@router.post("/{transform}", response_model=PhotoResponse, status_code=status.HTTP_200_OK)
 async def transform_photo(
     photo_id: int = Form(...),
     width: Optional[int] = Form(None),
@@ -55,11 +66,11 @@ async def transform_photo(
     radius: Optional[str] = Form(None),
     effect: Optional[str] = Form(None),
     quality: Optional[str] = Form(None),
-    format: Optional[str] = Form(None),
+    brightness: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(PhotoORM).filter(PhotoORM.id == photo_id)
+    query = select(PhotoORM).filter_by(id=photo_id)
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
@@ -68,6 +79,7 @@ async def transform_photo(
     try:
         transformed_url = upload(db_photo.url, **transformations)
         db_photo.url = transformed_url['secure_url']
+        db_photo.public_id = transformed_url['public_id']
         db.add(db_photo)
         await db.commit()
         await db.refresh(db_photo)
@@ -76,16 +88,63 @@ async def transform_photo(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{photo_id}", response_model=PhotoResponse)
-async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
-
+@router.patch("/{qrcode}",response_model=PhotoResponse, status_code=status.HTTP_200_OK)
+async def create_photo_link_and_qrcode(photo_id: int = Form(...), db: AsyncSession = Depends(get_db)):
     query = select(PhotoORM).filter_by(id=photo_id)
     result = await db.execute(query)
     db_photo = result.scalars().first()
+    if not db_photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=5)
+    qr.add_data(db_photo.url)
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format='PNG')
+    img_bytes.seek(0)
+    # Upload the image to Cloudinary
+    cloudinary_result = upload(img_bytes.read(), folder="qrcode/")
+    db_photo.qrcode_url = cloudinary_result['secure_url']
+    await db.commit()
+    await db.refresh(db_photo)
+    return PhotoResponse.from_orm(db_photo)
 
+
+@router.get("/{photo_id}", response_model=PhotoResponse)
+async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(PhotoORM).filter_by(id=photo_id)\
+        .options(selectinload(PhotoORM.comments), selectinload(PhotoORM.tags))
+    result = await db.execute(query)
+    db_photo = result.scalars().first()
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     return PhotoResponse.from_orm(db_photo)
+
+
+@router.get("/", response_model=List[PhotoResponse])
+async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0, ge=0),
+                     db: AsyncSession = Depends(get_db)):
+    query = select(PhotoORM).offset(offset).limit(limit)
+    result = await db.execute(query)
+    photos = result.scalars().all()
+    return [PhotoResponse.from_orm(photo) for photo in photos]
+
+
+@router.get("/{author_fullname}", response_model=List[PhotoResponse])
+async def get_photos_by_author(author_username: str, db: AsyncSession = Depends(get_db)):
+    query1 = select(UserORM).filter_by(username=author_username)
+    result = await db.execute(query1)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    query2 = select(ProfileORM).filter_by(user_id=user.id)
+    result = await db.execute(query2)
+    profile = result.scalars().first()
+    query = select(PhotoORM).filter_by(author_fk=profile.id)\
+        .options(selectinload(PhotoORM.comments), selectinload(PhotoORM.tags))
+    result = await db.execute(query)
+    photos = result.scalars().all()
+    return [PhotoResponse.from_orm(photo) for photo in photos]
 
 
 @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
