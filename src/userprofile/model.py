@@ -16,7 +16,8 @@ class UserAuthModel(BaseModel):
     """
     Model that is used to meet OAuth2 requirements
     """
-    username: EmailStr
+    username: str
+    email: EmailStr
     password: str
 
 
@@ -36,9 +37,8 @@ class UserDBModel(UserAuthModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: PositiveInt
-    email: EmailStr
-    password: str = Field(max_length=255)
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
+    role: Role
 
 
 class UserProfileModel(BaseModel):
@@ -101,3 +101,11 @@ class UserPublicProfileModel(BaseModel):
         """
         lname = ' ' + self.last_name if self.last_name else ''
         return self.first_name + lname
+
+
+class UserEditableProfileModel(BaseModel):
+    username: Optional[str] = Field(min_length=3, default=None)
+    email: Optional[EmailStr] = None
+    birthday: Optional[PastDate] = None
+    first_name: Optional[str] = Field(min_length=3, default=None)
+    last_name: Optional[str] = Field(min_length=3, default=None)

@@ -68,28 +68,6 @@ class Authentication:
             scope: Scope,
             live_time: timedelta
     ) -> str:
-        """
-        Creates a JWT token with the given email, scope, and live time.
-
-        Parameters:
-            email (str): The email associated with the token.
-            scope (Scope): The scope of the token.
-            live_time (timedelta): The duration for which the token is valid.
-
-        Returns:
-            str: The generated JWT token.
-
-        Algorithm:
-            1. Get the current time in UTC.
-            2. Calculate the expiration time by adding the live time to the current time.
-            3. Determine the key and algorithm based on the scope:
-                - If the scope is "access_token" or "email_token", use the SECRET_256 key and ACCESS_ALGORITHM
-                algorithm.
-                - Otherwise, use the SECRET_512 key and REFRESH_ALGORITHM algorithm.
-            4. Create the payload with the email, expiration time, and scope.
-            5. Encode the payload using the selected key and algorithm to generate the JWT token.
-            6. Return the generated JWT token.
-        """
         current_time = datetime.now(timezone.utc)
         expiration_time = current_time + live_time
 
@@ -117,20 +95,7 @@ class Authentication:
             self,
             email: str,
             live_time: timedelta = timedelta(days=1)
-    ) -> str:
-        """
-        Creates an access token for the given email with an optional live time.
-
-        Parameters:
-            email (str): The email for which the access token is created.
-            live_time (timedelta, optional): The live time of the token (default is 1 day).
-
-        Returns:
-            str: The access token created.
-
-        This function calls the `create_token` method with the provided email, live time, and scope "access_token"
-        to generate an access token.
-        """
+    ) -> Any:
         return self.create_token(email=email,
                                  live_time=live_time,
                                  scope="access_token")
@@ -139,20 +104,7 @@ class Authentication:
             self,
             email: str,
             live_time: timedelta = timedelta(days=7)
-    ) -> str:
-        """
-        Creates a refresh token for the given email with an optional live time.
-
-        Parameters:
-            email (str): The email for which the refresh token is created.
-            live_time (timedelta, optional): The live time of the token (default is 7 days).
-
-        Returns:
-            str: The refresh token created.
-
-        This function calls the `create_token` method with the provided email, scope "refresh_token", and live
-        time to generate a refresh token.
-        """
+    ) -> Any:
         return self.create_token(email=email,
                                  scope="refresh_token",
                                  live_time=live_time)
@@ -161,20 +113,7 @@ class Authentication:
             self,
             email: str,
             live_time: timedelta = timedelta(hours=12)
-    ) -> str:
-        """
-        Creates an email token for the given email with an optional live time.
-
-        Parameters:
-            email (str): The email for which the email token is created.
-            live_time (timedelta, optional): The live time of the token (default is 12 hours).
-
-        Returns:
-            str: The email token created.
-
-        This function calls the `create_token` method with the provided email, live time, and scope "email_token"
-        to generate an email token.
-        """
+    ) -> Any:
         return self.create_token(email=email,
                                  live_time=live_time,
                                  scope="email_token")
@@ -185,29 +124,6 @@ class Authentication:
             db: Annotated[AsyncSession, Depends(get_db)],
             scope: Scope = "access_token"
     ) -> Any:
-        """
-        Retrieves a user from the database based on the provided token and scope.
-
-        Parameters:
-            token (Annotated[str, Depends(oauth2_schema)]): The token used for authentication.
-            db (Annotated[AsyncSession, Depends(get_db)]): The database session.
-            scope (Scope, optional): The scope of the token (default is "access_token").
-
-        Returns:
-            Any: The user object retrieved from the database.
-
-        Raises:
-            HTTPException: If the token is invalid, the token scope is invalid, the user is not found,
-                            or the token has expired.
-
-        This function decodes the token using the provided key and algorithm. It then checks the token
-        scope and expiration time. If the token is valid, it retrieves the user from the database
-        based on the email in the token payload. If the user is not found, it raises an HTTPException
-        with a status code of 404. If the token scope is "refresh_token" and it has expired, it sets
-        the user's "loggedin" attribute to False in the database and raises an HTTPException with a
-        status code of 401. If the user is logged in, it returns the user object; otherwise, it raises
-        an HTTPException with a status code of 401.
-        """
         key = self.SECRET_256 \
             if scope == "access_token" or scope == "email_token" \
             else self.SECRET_512
@@ -227,7 +143,7 @@ class Authentication:
                 detail=f"Invalid token: {e}"
             )
 
-        if payload.get("scope") not in ["access_token", "refresh_token"]:
+        if payload.get("scope") not in ["access_token", "refresh_token", "email_token"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token scope"
@@ -254,8 +170,8 @@ class Authentication:
                 detail="Invalid token scope"
             )
 
-        db_response = await db.execute(select(UserORM).filter(UserORM.email == email))
-        user = db_response.scalars().first()
+        user = await db.execute(select(UserORM).filter(UserORM.email == email))
+        user = user.scalars().first()
 
         if user is None:
             raise HTTPException(
@@ -344,7 +260,3 @@ class Authentication:
             scope="email_token"
         )
 
-
-if __name__ == "__main__":
-    auth_service = Authentication()
-    print(auth_service.get_hash_password("password"))

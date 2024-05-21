@@ -74,7 +74,8 @@ async def send_confirmation(
 
     Finally, a JSON response is returned with a success message indicating that the email has been sent to the specified email address.
     """
-    user_db: UserORM = await db.execute(select(UserORM).filter(UserORM.email == email)).scalars().first()
+    user_db = await db.execute(select(UserORM).filter(UserORM.email == email.email))
+    user_db = user_db.scalars().first()
     if not user_db:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -83,7 +84,7 @@ async def send_confirmation(
             }
         )
 
-    token = auth_service.create_access_token(email=email.email,
+    token = auth_service.create_access_token(email=email,
                                              live_time=timedelta(days=1))
     token_url = router.url_path_for('confirm_email',
                                     token=token)
@@ -102,7 +103,7 @@ async def send_confirmation(
 
 
 @router.get('/confirm/{token:str}')
-async def confirm_email(
+def confirm_email(
         db: Annotated[AsyncSession, Depends(get_db)],
         token: str
 ) -> Any:
@@ -124,7 +125,7 @@ async def confirm_email(
     email_confirmed flag to True and returns a JSON response with a status code of 200 and a
     message indicating that the email has been confirmed.
     """
-    user: UserORM = await auth_service.get_access_user(token=token, db=db)
+    user: UserORM = auth_service.get_access_user(token=token, db=db)
     if user.email_confirmed:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
@@ -134,7 +135,7 @@ async def confirm_email(
         )
 
     user.email_confirmed = True
-    await db.commit()
+    db.commit()
     return JSONResponse(
         status_code=200,
         content={

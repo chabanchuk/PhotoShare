@@ -1,3 +1,4 @@
+
 from typing import List, Optional
 import io
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form, Query
@@ -38,7 +39,11 @@ async def get_photo(photo_id: int, db: AsyncSession):
 
 
 @router.post("/", response_model=PhotoResponse, status_code=status.HTTP_201_CREATED)
-async def create_photo(description: str = Form(), file: UploadFile = File(), db: AsyncSession = Depends(get_db)):
+async def create_photo(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        description: str = Form(),
+        file: UploadFile = File()
+):
 
     max_file_size = 3 * 1024 * 1024  # 3 megabytes
     file_content = await file.read()
