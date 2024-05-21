@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from userprofile.orm import UserORM
+from userprofile.orm import UserORM, BlacklistORM
 from database import get_db
 from settings import settings
 
@@ -62,7 +62,7 @@ class Authentication:
             salt=self.HASH_SERVICE.gensalt()
         ).decode()
 
-    def create_token(
+    async def create_token(
             self,
             email: str,
             scope: Scope,
@@ -76,11 +76,12 @@ class Authentication:
             else self.SECRET_512
 
         algorithm = self.ACCESS_ALGORITHM \
-            if scope == "access_token" \
+            if scope == "access_token" or scope == "email_token" \
             else self.REFRESH_ALGORITHM
 
         payload = {
             "sub": email,
+            "iat": current_time,
             "exp": expiration_time,
             "scope": scope
         }
@@ -91,32 +92,32 @@ class Authentication:
 
         return jwt_token
 
-    def create_access_token(
+    async def create_access_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=1)
     ) -> Any:
-        return self.create_token(email=email,
-                                 live_time=live_time,
-                                 scope="access_token")
+        return await self.create_token(email=email,
+                                       live_time=live_time,
+                                       scope="access_token")
 
-    def create_refresh_token(
+    async def create_refresh_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=7)
     ) -> Any:
-        return self.create_token(email=email,
-                                 scope="refresh_token",
-                                 live_time=live_time)
+        return await self.create_token(email=email,
+                                       scope="refresh_token",
+                                       live_time=live_time)
 
-    def create_email_token(
+    async def create_email_token(
             self,
             email: str,
             live_time: timedelta = timedelta(hours=12)
     ) -> Any:
-        return self.create_token(email=email,
-                                 live_time=live_time,
-                                 scope="email_token")
+        return await self.create_token(email=email,
+                                       live_time=live_time,
+                                       scope="email_token")
 
     async def get_user(
             self,
@@ -172,7 +173,6 @@ class Authentication:
 
         user = await db.execute(select(UserORM).filter(UserORM.email == email))
         user = user.scalars().first()
-
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -260,3 +260,25 @@ class Authentication:
             scope="email_token"
         )
 
+    async def add_to_blacklist(self, token: str, expires_delta: float,
+                               db: Annotated[AsyncSession, Depends(get_db)]):
+
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_delta)
+        blacklist_token = BlacklistORM(token=token, expires_at=expires_at)
+        db.add(blacklist_token)
+        await db.commit()
+        await db.refresh(blacklist_token)
+
+    async def is_blacklisted_token(self, token: str,
+                                   db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
+
+        blacklist_token = await db.execute(select(BlacklistORM).filter(BlacklistORM.token == token))
+        blacklist_token = blacklist_token.scalars().first()
+        if blacklist_token:
+            if blacklist_token.expires_at < datetime.utcnow():
+                # Token has expired, remove from blacklist
+                await db.delete(blacklist_token)
+                await db.commit()
+                return False
+            return True
+        return False
