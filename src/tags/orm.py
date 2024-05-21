@@ -10,6 +10,8 @@ from database import Base
 class TagORM(Base):
     __tablename__ = "tags"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     photos: Mapped[List["PhotoORM"]] = relationship(secondary=photo_tag_association_table, back_populates="tags")
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    owner: Mapped["UserORM"] = relationship("UserORM")

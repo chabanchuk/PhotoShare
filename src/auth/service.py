@@ -260,6 +260,26 @@ class Authentication:
             scope="email_token"
         )
 
+
+    async def has_access_to_delete_tag(
+            self,
+            user: UserORM,
+            tag_owner_id: int
+    ) -> bool:
+        """
+        Checks if the user has permission to delete the tag.
+
+        Parameters:
+            user (UserORM): The user who wants to remove the tag.
+            tag_owner_id (int): ID of the user who owns the tag.
+
+        Returns:
+            bool: True if the user has access to remove the tag, False otherwise.
+        """
+        if user.role in ['moderator', 'admin']:
+            return True
+        return user.id == tag_owner_id
+
     async def add_to_blacklist(self, token: str, expires_delta: float,
                                db: Annotated[AsyncSession, Depends(get_db)]):
 
