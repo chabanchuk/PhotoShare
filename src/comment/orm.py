@@ -14,7 +14,7 @@ class CommentORM(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     text: Mapped[str] = mapped_column(String, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), onupdate=func.now())
     author_fk: Mapped[int] = mapped_column(Integer, ForeignKey('profiles.id', ondelete='CASCADE'))
     photo_fk: Mapped[int] = mapped_column(Integer, ForeignKey('photos.id', ondelete='CASCADE'))

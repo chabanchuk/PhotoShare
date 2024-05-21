@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import selectinload
 
 from database import get_db
-from auth.service import Authentication
+from auth.service import Authentication as auth_service
 from userprofile.model import (UserPublicProfileModel,
                                UserProfileModel,
                                UserEditableProfileModel,
@@ -17,7 +17,7 @@ from userprofile.orm import ProfileORM, UserORM
 
 import utils.model_utilities as model_util
 
-auth_service = Authentication()
+# auth_service = Authentication()
 
 router = APIRouter(prefix="/user", tags=["user profile"])
 
@@ -30,11 +30,11 @@ def get_orm_by_field(field: ProfileEditField) -> Any:
     """
     Returns ORM object by field name
 
-    Args:
-        field (ProfileEditField): field name
+        Args:
+            field (ProfileEditField): field name
 
-    Returns:
-        UserORM | ProfileORM: ORM object
+        Returns:
+            UserORM | ProfileORM: ORM object
     """
     if field in ["username", "email"]:
         return UserORM, 'id'
@@ -51,14 +51,14 @@ async def get_all_profiles(
     """
     Returns list of public profiles
 
-    Args:
-        offset (int): start index for pagination
-        limit (in): quantity of profiles to return
-        db (AsyncSession): session object used for database operations
+        Args:
+            offset (int): start index for pagination
+            limit (in): quantity of profiles to return
+            db (AsyncSession): session object used for database operations
 
-    Returns:
-        List[UserPublicProfileModel]: list of public profiles
-        JSONResponse: error message if no profiles found
+        Returns:
+            List[UserPublicProfileModel]: list of public profiles
+            JSONResponse: error message if no profiles found
     """
     async with db:
         stmnt = select(ProfileORM).offset(offset).limit(limit).options(
@@ -96,13 +96,14 @@ async def get_user_profile(
 ) -> Any:
     """
     Retrieves public profile by username
-    Args:
-        username (int): start index for pagination
-        db (AsyncSession): session object used for database operations
 
-    Returns:
-        UserPublicProfileModel: public accessible profile of user
-        JSONResponse: error message if no profiles found
+        Args:
+            username (int): start index for pagination
+            db (AsyncSession): session object used for database operations
+
+        Returns:
+            UserPublicProfileModel: public accessible profile of user
+            JSONResponse: error message if no profiles found
     """
     stmnt = select(ProfileORM)\
         .join(UserORM).filter(UserORM.username == username)\
@@ -134,12 +135,12 @@ async def get_my_profile(
 ) -> Any:
     """
     Retrieves profile of signed user
-    Args:
-        db (AsyncSession): session object used for database operations
-        user (UserORM): user object of authenticated user
-    Returns:
-        UserProfileModel: full  profile of logged user
-        JSONResponse: error message if no profiles found
+        Args:
+            db (AsyncSession): session object used for database operations
+            user (UserORM): user object of authenticated user
+        Returns:
+            UserProfileModel: full  profile of logged user
+            JSONResponse: error message if no profiles found
     """
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)\
         .options(
@@ -254,19 +255,20 @@ async def patch_my_profile_field(
         user: Annotated[UserORM, Depends(auth_service.get_access_user)],
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
-    """Change authenticated user profile field value
+    """
+    Change authenticated user profile field value
 
-    Args:
-        field (ProfileEditField): field of profile to update
-        value (Any): new value for field
-        user (UserORM): user object of authenticated user
-        db (AsyncSession): session object used for database operations
+        Args:
+            field (ProfileEditField): field of profile to update
+            value (Any): new value for field
+            user (UserORM): user object of authenticated user
+            db (AsyncSession): session object used for database operations
 
-    Returns:
-        UserProfileModel or JSONResponse with 404 status code if profile not found
-        JSONResponse with 405 status code if field is not set,
-        JSONResponse with 409 status code if profile exists,
-        JSONResponse with 422 status code if field or value are invalid
+        Returns:
+            UserProfileModel or JSONResponse with 404 status code if profile not found
+            JSONResponse with 405 status code if field is not set,
+            JSONResponse with 409 status code if profile exists,
+            JSONResponse with 422 status code if field or value are invalid
         """
     orm_model, id_column = get_orm_by_field(field)
     stmnt = select(orm_model).filter(Column(id_column) == user.id)
@@ -290,7 +292,7 @@ async def patch_my_profile_field(
             }
         )
     try:
-        _ = UserEditableProfileModel(**{field: value})
+        update_model = UserEditableProfileModel(**{field: value})
     except ValueError:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -298,10 +300,11 @@ async def patch_my_profile_field(
                 "detail": f"Value {value} is invalid for {field}."
             }
         )
+    update_values = update_model.model_dump(exclude_unset=True)
     stmnt = (
         update(orm_model)
         .where(orm_model.id == user.id)
-        .values(**{field: value})
+        .values(update_values)
     )
     res = await db.execute(stmnt)
 
@@ -333,17 +336,17 @@ async def set_my_profile_field(
 ) -> Any:
     """Fill authenticated user profile field
 
-    Args:
-        field (ProfileEditField): field of profile to update
-        value (Any): new value for field
-        user (UserORM): user object of authenticated user
-        db (AsyncSession): session object used for database operations
+        Args:
+            field (ProfileEditField): field of profile to update
+            value (Any): new value for field
+            user (UserORM): user object of authenticated user
+            db (AsyncSession): session object used for database operations
 
-    Returns:
-        UserProfileModel or JSONResponse with 404 status code if profile not found
-        JSONResponse with 405 status code if field is set,
-        JSONResponse with 409 status code if profile exists,
-        JSONResponse with 422 status code if field or value are invalid
+        Returns:
+            UserProfileModel or JSONResponse with 404 status code if profile not found
+            JSONResponse with 405 status code if field is set,
+            JSONResponse with 409 status code if profile exists,
+            JSONResponse with 422 status code if field or value are invalid
         """
     orm_model, id_column = get_orm_by_field(field)
     stmnt = select(orm_model).filter(Column(id_column) == user.id)
@@ -367,7 +370,7 @@ async def set_my_profile_field(
             }
         )
     try:
-        _ = UserEditableProfileModel(**{field: value})
+        update_model = UserEditableProfileModel(**{field: value})
     except ValueError:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -375,12 +378,14 @@ async def set_my_profile_field(
                 "detail": f"Value {value} is invalid for {field}."
             }
         )
+    update_values = update_model.model_dump(exclude_unset=True)
     stmnt = (
         update(orm_model)
         .where(orm_model.id == user.id)
-        .values(**{field: value})
+        .values(update_values)
     )
-    res = await db.execute(stmnt)
+    await db.execute(stmnt)
+    await db.commit()
 
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
         .options(
@@ -409,15 +414,15 @@ async def set_my_profile_field(
 ) -> Any:
     """Edit authenticated user profile
 
-    Args:
-        profile_data (UserEditableProfileModel): profile data to store
-        user (UserORM): user object of authenticated user
-        db (AsyncSession): session object used for database operations
+        Args:
+            profile_data (UserEditableProfileModel): profile data to store
+            user (UserORM): user object of authenticated user
+            db (AsyncSession): session object used for database operations
 
-    Returns:
-        UserProfileModel or JSONResponse with 404 status code if profile not found.
-        JSONResponse with 405 status code if profile is not set,
-        JSONResponse with 422 status code if fields or values are invalid
+        Returns:
+            UserProfileModel or JSONResponse with 404 status code if profile not found.
+            JSONResponse with 405 status code if profile is not set,
+            JSONResponse with 422 status code if fields or values are invalid
         """
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
     db_res = await db.execute(stmnt)
@@ -487,14 +492,14 @@ async def delete_my_profile_field(
 ) -> Any:
     """Delete authenticated user profile data in field
 
-    Args:
-        field (ProfileEditField): field of profile to delete
-        user (UserORM): user object of authenticated user
-        db (AsyncSession): session object used for database operations
+        Args:
+            field (ProfileEditField): field of profile to delete
+            user (UserORM): user object of authenticated user
+            db (AsyncSession): session object used for database operations
 
-    Returns:
-        UserProfileModel or JSONResponse with 404 status code if profile not found
-        JSONResponse with 405 status code if field is not set
+        Returns:
+            UserProfileModel or JSONResponse with 404 status code if profile not found
+            JSONResponse with 405 status code if field is not set
         """
     if field == "username":
         return JSONResponse(
@@ -525,7 +530,10 @@ async def delete_my_profile_field(
             }
         )
 
-    db_model[field] = None
+    stmnt = (update(orm_model)
+             .where(Column(id_column) == user.id)
+             .values(**{field: None}))
+    await db.execute(stmnt)
     await db.commit()
 
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
@@ -553,14 +561,14 @@ async def delete_profile(
 ) -> Any:
     """Delete user profile by username
 
-    Args:
-        username (str): username of profile to delete
-        db (AsyncSession): session object used for database operations
-        user (UserORM): user object of authenticated user
+        Args:
+            username (str): username of profile to delete
+            db (AsyncSession): session object used for database operations
+            user (UserORM): user object of authenticated user
 
-    Returns:
-        JSONResponse with 204 status code if profile deleted
-        JSONResponse with 404 status code if profile not found
+        Returns:
+            JSONResponse with 204 status code if profile deleted
+            JSONResponse with 404 status code if profile not found
         """
     stmnt = select(ProfileORM).join(UserORM).filter(UserORM.username == username)
     db_res = await db.execute(stmnt)

@@ -9,17 +9,20 @@ from comment.orm import CommentORM
 from photo.orm import PhotoORM
 from userprofile.orm import ProfileORM
 
+
 router = APIRouter(
     prefix="/comments",
     tags=["comments"],
     responses={404: {"description": "Not found"}},
 )
 
+
 @router.get("/", response_model=List[CommentModel])
 async def read_comments(db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 100):
     result = await db.execute(select(CommentORM).offset(skip).limit(limit))
     comments = result.scalars().all()
     return [CommentModel.from_orm(comment) for comment in comments]
+
 
 @router.post("/", response_model=CommentModel)
 async def create_comment(comment: CommentCreate, db: AsyncSession = Depends(get_db)):
@@ -43,6 +46,7 @@ async def create_comment(comment: CommentCreate, db: AsyncSession = Depends(get_
     await db.refresh(db_comment)
     return CommentModel.from_orm(db_comment)
 
+
 @router.get("/{comment_id}", response_model=CommentModel)
 async def read_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CommentORM).where(CommentORM.id == comment_id))
@@ -50,6 +54,7 @@ async def read_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
     return CommentModel.from_orm(db_comment)
+
 
 @router.put("/{comment_id}", response_model=CommentModel)
 async def update_comment(comment_id: int, comment: CommentUpdate, db: AsyncSession = Depends(get_db)):
@@ -65,6 +70,7 @@ async def update_comment(comment_id: int, comment: CommentUpdate, db: AsyncSessi
     await db.commit()
     await db.refresh(db_comment)
     return CommentModel.from_orm(db_comment)
+
 
 @router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
