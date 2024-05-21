@@ -7,12 +7,15 @@ from passlib.context import CryptContext
 from datetime import datetime
 import random
 
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -35,11 +38,14 @@ class Photo(Base):
     owner = relationship("User", back_populates="photos")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
-    tags = Column(String)  
+    tags = Column(String)  # список тегів, розділених комами
+
 
 Base.metadata.create_all(bind=engine)
 
+
 app = FastAPI()
+
 
 fake = Faker()
 
@@ -63,6 +69,7 @@ def create_fake_users(db):
         users.append(user)
     db.commit()
     return users
+
 
 @app.on_event("startup")
 def startup_event():
