@@ -138,6 +138,8 @@ async def get_my_profile(
     profile_dump = dict(**profile.__dict__)
     profile_dump['username'] = user.username
     profile_dump['email'] = user.email
+    profile_dump['photos'] = len(profile.photos)
+    profile_dump['comments'] = len(profile.comments)
     return UserProfileModel(**profile_dump)
 
 
@@ -204,7 +206,25 @@ async def ceate_my_profile(
     await db.commit()
     await db.refresh(profile_orm)
 
-    return {"Profile filled"}
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
+        .options(
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos),
+        selectinload(ProfileORM.user)
+    )
+    db_response = await db.execute(stmnt)
+    profile = db_response.scalars().first()
+    if profile is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "Profile not found"}
+        )
+    profile_dump = dict(**profile.__dict__)
+    profile_dump['username'] = user.username
+    profile_dump['email'] = user.email
+    profile_dump['photos'] = len(profile.photos)
+    profile_dump['comments'] = len(profile.comments)
+    return UserProfileModel(**profile_dump)
 
 
 ProfileEditField: TypeAlias = Literal[
@@ -234,7 +254,12 @@ async def patch_my_profile_field(
         JSONResponse with 409 status code if profile exists,
         JSONResponse with 422 status code if field or value are invalid
         """
-    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
+        .options(
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos),
+        selectinload(ProfileORM.user)
+    )
     db_res = await db.execute(stmnt)
     db_profile = db_res.scalars().first()
 
@@ -266,10 +291,14 @@ async def patch_my_profile_field(
     db_profile.__dict__[field] = value
     await db.commit()
 
+
+    db_response = await db.execute(stmnt)
+    db_profile = db_response.scalars().first()
     profile_dump = dict(**db_profile.__dict__)
     profile_dump['username'] = user.username
     profile_dump['email'] = user.email
-
+    profile_dump['photos'] = len(db_profile.photos)
+    profile_dump['comments'] = len(db_profile.comments)
     return UserProfileModel(**profile_dump)
 
 

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, date
 from typing import Optional, Any, List, TypeAlias, Literal
 
-from sqlalchemy import String, Date, ForeignKey
+from sqlalchemy import String, Date, ForeignKey, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from comment.orm import CommentORM
@@ -28,7 +28,7 @@ def full_name_calculated_default(context) -> str:
     return f"{first}{last}"
 
 
-async def full_name_calculated_update(context) -> Any:
+def full_name_calculated_update(context) -> Any:
     """
     Calculates on_update event value for full_name field
 
@@ -43,10 +43,10 @@ async def full_name_calculated_update(context) -> Any:
     id_ = context.get_current_parameters().get('id_1')
     if id_ is None:
         return
-    with get_db() as session:
-        current = await session.get(ProfileORM, id_)
-        first = first if first is not None else current.first_name
-        last = last if last is not None else current.last_name
+    # async with get_db().run_sync as session:
+    #     current = await session.get(ProfileORM, id_)
+    #     first = first if first is not None else current.first_name
+    #     last = last if last is not None else current.last_name
     last = f" {last}" if last is not None else ""
     return f"{first}{last}"
 

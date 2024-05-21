@@ -1,5 +1,5 @@
 
-from typing import List, Optional
+from typing import List, Optional, Annotated
 import io
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form, Query
 # from requests import HTTPError
@@ -15,8 +15,6 @@ from photo.model import  PhotoResponse, PhotoUpdate, PhotoModel, TransformReques
 from photo.orm import PhotoORM
 from userprofile.orm import ProfileORM, UserORM
 from settings import settings
-from io import BytesIO, StringIO
-import base64
 import qrcode.image.svg
 
 
