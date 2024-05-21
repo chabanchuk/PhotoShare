@@ -7,8 +7,6 @@ from pydantic import (BaseModel,
                       computed_field,
                       Field, PositiveInt, ConfigDict)
 
-from comment.model import CommentModel
-from photo.model import PhotoModel
 from userprofile.orm import Role
 
 

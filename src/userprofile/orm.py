@@ -12,43 +12,43 @@ from photo.orm import PhotoORM
 Role: TypeAlias = Literal['user', 'moderator', 'admin']
 
 
-def full_name_calculated_default(context) -> str:
-    """
-    Calculates default (creation time) value for full_name field
-
-    Arguments:
-        context: current parameters for calling ORM
-
-    Returns:
-         str: strings with concatenated first and last name
-    """
-    first = context.get_current_parameters().get('first_name')
-    last = context.get_current_parameters().get('last_name')
-    last = f" {last}" if last is not None else ""
-    return f"{first}{last}"
-
-
-def full_name_calculated_update(context) -> Any:
-    """
-    Calculates on_update event value for full_name field
-
-    Arguments:
-        context: current parameters for calling ORM
-
-    Returns:
-         str: strings with concatenated first and last name
-    """
-    first = context.get_current_parameters().get('first_name')
-    last = context.get_current_parameters().get('last_name')
-    id_ = context.get_current_parameters().get('id_1')
-    if id_ is None:
-        return
-    # async with get_db().run_sync as session:
-    #     current = await session.get(ProfileORM, id_)
-    #     first = first if first is not None else current.first_name
-    #     last = last if last is not None else current.last_name
-    last = f" {last}" if last is not None else ""
-    return f"{first}{last}"
+# def full_name_calculated_default(context) -> str:
+#     """
+#     Calculates default (creation time) value for full_name field
+#
+#     Arguments:
+#         context: current parameters for calling ORM
+#
+#     Returns:
+#          str: strings with concatenated first and last name
+#     """
+#     first = context.get_current_parameters().get('first_name')
+#     last = context.get_current_parameters().get('last_name')
+#     last = f" {last}" if last is not None else ""
+#     return f"{first}{last}"
+#
+#
+# def full_name_calculated_update(context) -> Any:
+#     """
+#     Calculates on_update event value for full_name field
+#
+#     Arguments:
+#         context: current parameters for calling ORM
+#
+#     Returns:
+#          str: strings with concatenated first and last name
+#     """
+#     first = context.get_current_parameters().get('first_name')
+#     last = context.get_current_parameters().get('last_name')
+#     id_ = context.get_current_parameters().get('id_1')
+#     if id_ is None:
+#         return
+#     # async with get_db().run_sync as session:
+#     #     current = await session.get(ProfileORM, id_)
+#     #     first = first if first is not None else current.first_name
+#     #     last = last if last is not None else current.last_name
+#     last = f" {last}" if last is not None else ""
+#     return f"{first}{last}"
 
 
 class UserORM(Base):
@@ -81,10 +81,10 @@ class ProfileORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(20))
     last_name: Mapped[Optional[str]] = mapped_column(String(20))
-    full_name: Mapped[str] = mapped_column(String(),
-                                           unique=True,
-                                           default=full_name_calculated_default,
-                                           onupdate=full_name_calculated_update)
+    # full_name: Mapped[str] = mapped_column(String(),
+    #                                        unique=True,
+    #                                        default=full_name_calculated_default,
+    #                                        onupdate=full_name_calculated_update)
     birthday: Mapped[Optional[date]] = mapped_column(Date())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     # Realtions

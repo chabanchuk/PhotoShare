@@ -2,7 +2,7 @@ from typing import List, Annotated, Any, TypeAlias, Literal
 
 from fastapi import Depends, status
 from fastapi.routing import APIRouter
-from sqlalchemy import select, update
+from sqlalchemy import select, update, Column
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import selectinload
@@ -20,6 +20,25 @@ import utils.model_utilities as model_util
 auth_service = Authentication()
 
 router = APIRouter(prefix="/user", tags=["user profile"])
+
+
+ProfileEditField: TypeAlias = Literal[
+    *model_util.get_model_fields(UserEditableProfileModel)
+]
+
+def get_orm_by_field(field: ProfileEditField) -> Any:
+    """
+    Returns ORM object by field name
+
+    Args:
+        field (ProfileEditField): field name
+
+    Returns:
+        UserORM | ProfileORM: ORM object
+    """
+    if field in ["username", "email"]:
+        return UserORM, 'id'
+    return ProfileORM, 'user_id'
 
 
 @router.get("/profiles",
@@ -195,7 +214,7 @@ async def ceate_my_profile(
         .where(UserORM.id == user.id)
         .values(**user_update)
     )
-    res = await db.execute(stmnt)
+    await db.execute(stmnt)
 
     profile_orm = ProfileORM(**profile.model_dump(
         exclude_unset=True,
@@ -227,11 +246,6 @@ async def ceate_my_profile(
     return UserProfileModel(**profile_dump)
 
 
-ProfileEditField: TypeAlias = Literal[
-    *model_util.get_model_fields(UserEditableProfileModel)
-]
-
-
 @router.patch("/profile/me/{field}",
             response_model=UserProfileModel)
 async def patch_my_profile_field(
@@ -254,24 +268,20 @@ async def patch_my_profile_field(
         JSONResponse with 409 status code if profile exists,
         JSONResponse with 422 status code if field or value are invalid
         """
-    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
-        .options(
-        selectinload(ProfileORM.comments),
-        selectinload(ProfileORM.photos),
-        selectinload(ProfileORM.user)
-    )
+    orm_model, id_column = get_orm_by_field(field)
+    stmnt = select(orm_model).filter(Column(id_column) == user.id)
     db_res = await db.execute(stmnt)
-    db_profile = db_res.scalars().first()
+    db_model = db_res.scalars().first()
 
-    if db_profile is None:
+    if db_model is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
-                "detail": f"Profile for user {user.username} not found."
+                "detail": f"Data for user {user.username} not found."
             }
         )
 
-    if db_profile.__dict__[field] is None:
+    if db_model.__dict__[field] is None:
         return JSONResponse(
             status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
             content={
@@ -288,17 +298,28 @@ async def patch_my_profile_field(
                 "detail": f"Value {value} is invalid for {field}."
             }
         )
-    db_profile.__dict__[field] = value
-    await db.commit()
+    stmnt = (
+        update(orm_model)
+        .where(orm_model.id == user.id)
+        .values(**{field: value})
+    )
+    res = await db.execute(stmnt)
 
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
+        .options(
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos),
+        selectinload(ProfileORM.user)
+    )
 
     db_response = await db.execute(stmnt)
     db_profile = db_response.scalars().first()
     profile_dump = dict(**db_profile.__dict__)
-    profile_dump['username'] = user.username
-    profile_dump['email'] = user.email
+    profile_dump['username'] = db_profile.user.username
+    profile_dump['email'] = db_profile.user.email
     profile_dump['photos'] = len(db_profile.photos)
     profile_dump['comments'] = len(db_profile.comments)
+
     return UserProfileModel(**profile_dump)
 
 
@@ -324,24 +345,25 @@ async def set_my_profile_field(
         JSONResponse with 409 status code if profile exists,
         JSONResponse with 422 status code if field or value are invalid
         """
-    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
+    orm_model, id_column = get_orm_by_field(field)
+    stmnt = select(orm_model).filter(Column(id_column) == user.id)
     db_res = await db.execute(stmnt)
-    db_profile = db_res.scalars().first()
+    db_model = db_res.scalars().first()
 
-    if db_profile is None:
+    if db_model is None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
-                "detail": f"Profile for user {user.username} not found."
+                "detail": f"Data for user {user.username} not found."
             }
         )
 
-    if db_profile.__dict__[field] is not None:
+    if db_model.__dict__[field] is not None:
         return JSONResponse(
             status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
             content={
-                "detail": (f"Field {field} is set in profile."
-                           + " Use PATCH method to set it.")
+                "detail": (f"Field {field} is set."
+                           + " Use PATCH method to change it.")
             }
         )
     try:
@@ -353,12 +375,27 @@ async def set_my_profile_field(
                 "detail": f"Value {value} is invalid for {field}."
             }
         )
-    db_profile.__dict__[field] = value
-    await db.commit()
+    stmnt = (
+        update(orm_model)
+        .where(orm_model.id == user.id)
+        .values(**{field: value})
+    )
+    res = await db.execute(stmnt)
 
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
+        .options(
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos),
+        selectinload(ProfileORM.user)
+    )
+
+    db_response = await db.execute(stmnt)
+    db_profile = db_response.scalars().first()
     profile_dump = dict(**db_profile.__dict__)
-    profile_dump['username'] = user.username
-    profile_dump['email'] = user.email
+    profile_dump['username'] = db_profile.user.username
+    profile_dump['email'] = db_profile.user.email
+    profile_dump['photos'] = len(db_profile.photos)
+    profile_dump['comments'] = len(db_profile.comments)
 
     return UserProfileModel(**profile_dump)
 
@@ -407,30 +444,150 @@ async def set_my_profile_field(
         exclude={"first_name",
                  "last_name",
                  "birthday"})
-    stmnt = (
-        update(UserORM)
-        .where(UserORM.id == user.id)
-        .values(**user_update)
-    )
-    await db.execute(stmnt)
+
+    if user_update:
+        stmnt = (
+            update(UserORM)
+            .where(UserORM.id == user.id)
+            .values(**user_update)
+        )
+        await db.execute(stmnt)
 
     profile_update = profile_data.model_dump(
         exclude_unset=True,
         exclude={"username", "email"})
 
-    stmnt = (
-        update(ProfileORM)
-        .where(ProfileORM.id == user.id)
-        .values(**profile_update)
-    )
-    await db.execute(stmnt)
+    if profile_update:
+        stmnt = (
+            update(ProfileORM)
+            .where(ProfileORM.id == user.id)
+            .values(**profile_update)
+        )
+        await db.execute(stmnt)
 
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
+    db_response = await db.execute(stmnt)
+    db_profile = db_response.scalars().first()
+
+    profile_dump = dict(**db_profile.__dict__)
+    profile_dump['username'] = db_profile.user.username
+    profile_dump['email'] = db_profile.user.email
+    profile_dump['photos'] = len(db_profile.photos)
+    profile_dump['comments'] = len(db_profile.comments)
+
+    return UserProfileModel(**profile_dump)
+
+
+@router.delete("/profile/me/{field}",
+               response_model=UserProfileModel)
+async def delete_my_profile_field(
+        field: ProfileEditField,
+        user: Annotated[UserORM, Depends(auth_service.get_access_user)],
+        db: Annotated[AsyncSession, Depends(get_db)]
+) -> Any:
+    """Delete authenticated user profile data in field
+
+    Args:
+        field (ProfileEditField): field of profile to delete
+        user (UserORM): user object of authenticated user
+        db (AsyncSession): session object used for database operations
+
+    Returns:
+        UserProfileModel or JSONResponse with 404 status code if profile not found
+        JSONResponse with 405 status code if field is not set
+        """
+    if field == "username":
+        return JSONResponse(
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+            content={
+                "detail": "Deletion of profile fields is not allowed."
+            }
+        )
+
+    orm_model, id_column = get_orm_by_field(field)
+    stmnt = select(orm_model).filter(Column(id_column) == user.id)
+    db_res = await db.execute(stmnt)
+    db_model = db_res.scalars().first()
+
+    if db_model is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"Data for user {user.username} not found."
+            }
+        )
+
+    if db_model.__dict__[field] is None:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "detail": f"Field {field} is not set. Nothing to do."
+            }
+        )
+
+    db_model[field] = None
+    await db.commit()
+
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
+    db_response = await db.execute(stmnt)
+    db_profile = db_response.scalars().first()
+
+    profile_dump = dict(**db_profile.__dict__)
+    profile_dump['username'] = db_profile.user.username
+    profile_dump['email'] = db_profile.user.email
+    profile_dump['photos'] = len(db_profile.photos)
+    profile_dump['comments'] = len(db_profile.comments)
+
+    return UserProfileModel(**profile_dump)
+
+
+@router.delete("/profile/{username}",
+                responses={
+                    204: {"detail": "Profile deleted"},
+                    404: {"detail": "Profile not found"}
+                })
+async def delete_profile(
+        username: str,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[UserORM, Depends(auth_service.get_access_user)]
+) -> Any:
+    """Delete user profile by username
+
+    Args:
+        username (str): username of profile to delete
+        db (AsyncSession): session object used for database operations
+        user (UserORM): user object of authenticated user
+
+    Returns:
+        JSONResponse with 204 status code if profile deleted
+        JSONResponse with 404 status code if profile not found
+        """
+    stmnt = select(ProfileORM).join(UserORM).filter(UserORM.username == username)
     db_res = await db.execute(stmnt)
     db_profile = db_res.scalars().first()
 
-    profile_dump = dict(**db_profile.__dict__)
-    profile_dump['username'] = user.username
-    profile_dump['email'] = user.email
+    if db_profile is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"Profile with username {username} not found."
+            }
+        )
 
-    return UserProfileModel(**profile_dump)
+    if db_profile.user_id != user.id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": "You can delete only your profile."
+            }
+        )
+
+    await db.delete(db_profile)
+    await db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_204_NO_CONTENT,
+        content={
+            "detail": "Profile deleted."
+        }
+    )
