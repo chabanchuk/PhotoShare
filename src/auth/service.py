@@ -62,7 +62,7 @@ class Authentication:
             salt=self.HASH_SERVICE.gensalt()
         ).decode()
 
-    def create_token(
+    async def create_token(
             self,
             email: str,
             scope: Scope,
@@ -76,7 +76,7 @@ class Authentication:
             else self.SECRET_512
 
         algorithm = self.ACCESS_ALGORITHM \
-            if scope == "access_token" \
+            if scope == "access_token" or scope == "email_token" \
             else self.REFRESH_ALGORITHM
 
         payload = {
@@ -91,32 +91,32 @@ class Authentication:
 
         return jwt_token
 
-    def create_access_token(
+    async def create_access_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=1)
     ) -> Any:
-        return self.create_token(email=email,
-                                 live_time=live_time,
-                                 scope="access_token")
+        return await self.create_token(email=email,
+                                       live_time=live_time,
+                                       scope="access_token")
 
-    def create_refresh_token(
+    async def create_refresh_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=7)
     ) -> Any:
-        return self.create_token(email=email,
-                                 scope="refresh_token",
-                                 live_time=live_time)
+        return await self.create_token(email=email,
+                                       scope="refresh_token",
+                                       live_time=live_time)
 
-    def create_email_token(
+    async def create_email_token(
             self,
             email: str,
             live_time: timedelta = timedelta(hours=12)
     ) -> Any:
-        return self.create_token(email=email,
-                                 live_time=live_time,
-                                 scope="email_token")
+        return await self.create_token(email=email,
+                                       live_time=live_time,
+                                       scope="email_token")
 
     async def get_user(
             self,
@@ -172,7 +172,6 @@ class Authentication:
 
         user = await db.execute(select(UserORM).filter(UserORM.email == email))
         user = user.scalars().first()
-
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -259,4 +258,3 @@ class Authentication:
             db=db,
             scope="email_token"
         )
-
