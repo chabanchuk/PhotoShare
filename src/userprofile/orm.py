@@ -66,7 +66,7 @@ class UserORM(Base):
     # password contains hashed password
     password: Mapped[str] = mapped_column(nullable=False)
     loggedin: Mapped[bool] = mapped_column(default=False)
-    email_confirmed: Mapped[bool] = mapped_column(default=False)
+    # email_confirmed: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
     )
@@ -98,5 +98,5 @@ class ProfileORM(Base):
 class BlacklistORM(Base):
     __tablename__ = "blacklist_tokens"
     id: Mapped[int] = mapped_column(primary_key=True)
-    token = Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    expires_at = Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    token: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
