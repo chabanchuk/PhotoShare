@@ -37,8 +37,9 @@ class UserDBModel(UserAuthModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: PositiveInt
+    email: EmailStr
+    password: str = Field(max_length=255)
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
-    role: Role
 
 
 class UserProfileModel(BaseModel):
