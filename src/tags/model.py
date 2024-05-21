@@ -1,5 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 
 class TagModel(BaseModel):
     """
@@ -18,5 +19,4 @@ class TagResponseModel(BaseModel):
     name: str
     owner_id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
