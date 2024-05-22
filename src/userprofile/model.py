@@ -19,15 +19,6 @@ class UserAuthModel(BaseModel):
     password: str
 
 
-class UserRegisterModel(BaseModel):
-    """
-    Model that is used to meet OAuth2 requirements
-    """
-    username: str
-    email: EmailStr
-    password: str
-
-
 class UserDBModel(UserAuthModel):
     """
     Model that stores user data in DB
@@ -99,11 +90,3 @@ class UserPublicProfileModel(BaseModel):
         """
         lname = ' ' + self.last_name if self.last_name else ''
         return self.first_name + lname
-
-
-class UserEditableProfileModel(BaseModel):
-    username: Optional[str] = Field(min_length=3, default=None)
-    email: Optional[EmailStr] = None
-    birthday: Optional[PastDate] = None
-    first_name: Optional[str] = Field(min_length=3, default=None)
-    last_name: Optional[str] = Field(min_length=3, default=None)

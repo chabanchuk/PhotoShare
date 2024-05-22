@@ -93,15 +93,17 @@ async def login(
                 ]}
         )
 
-    # if not user_db.email_confirmed:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         content={
-    #             'details': [
-    #                 {"msg": "Email not confirmed."}
-    #             ]
-    #         }
-    #     )
+      
+    if not user_db.email_confirmed:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={
+                'details': [
+                    {"msg": "Email not confirmed."}
+                ]
+            }
+        )
+
 
     access_token = await auth_service.create_access_token(user.username)
     refresh_token = await auth_service.create_refresh_token(user.username)

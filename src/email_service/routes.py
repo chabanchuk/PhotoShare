@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Annotated
 from datetime import timedelta
 
-from fastapi import BackgroundTasks, Depends
+from fastapi import BackgroundTasks, Depends, Request
 from fastapi.routing import APIRouter
 from pydantic import EmailStr, BaseModel
 from fastapi_mail import (ConnectionConfig,
@@ -46,34 +46,10 @@ conf = ConnectionConfig(
 
 @router.post('/send-confirmation')
 async def send_confirmation(
-        bg_task: BackgroundTasks,
         email: EmailModel,
+        bg_task: BackgroundTasks,
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
-    """
-    Sends a confirmation email to the specified email address.
-
-    Parameters:
-        - bg_task (BackgroundTasks): The background tasks to be executed.
-        - email (EmailModel): The email address to send the confirmation to.
-        - db (Annotated[AsyncSession, Depends(get_db)]): The database session.
-
-    Returns:
-        - Any: A JSON response indicating the success or failure of sending the email.
-
-    Raises:
-        - None
-
-    This function sends a confirmation email to the specified email address. It first checks if the user with the given email address exists in the database. If the user is not found, it returns a JSON response with a status code of 404 and a details message indicating that the user was not found.
-
-    If the user is found, a confirmation token is generated using the `auth_service.create_access_token` function. The token is associated with the email address and has a live time of 1 day. The token URL is generated using the `router.url_path_for` function, specifying the 'confirm_email' route and the token as a parameter.
-
-    A message schema is created with the subject "Email confirmation", the recipient email address, a template body containing the token URL, and the subtype set to MessageType.html.
-
-    A FastMail instance is created using the `conf` configuration. The `fm.send_message` function is called with the message, specifying the template name as "confirm_email.html". The message sending is performed as a background task using the `bg_task.add_task` function.
-
-    Finally, a JSON response is returned with a success message indicating that the email has been sent to the specified email address.
-    """
     user_db = await db.execute(select(UserORM).filter(UserORM.email == email.email))
     user_db = user_db.scalars().first()
     if not user_db:
@@ -84,8 +60,8 @@ async def send_confirmation(
             }
         )
 
-    token = auth_service.create_access_token(email=email,
-                                             live_time=timedelta(days=1))
+    token = await auth_service.create_email_token(email=email.email,
+                                                  live_time=timedelta(hours=12))
     token_url = router.url_path_for('confirm_email',
                                     token=token)
     message = MessageSchema(
@@ -103,7 +79,7 @@ async def send_confirmation(
 
 
 @router.get('/confirm/{token:str}')
-def confirm_email(
+async def confirm_email(
         db: Annotated[AsyncSession, Depends(get_db)],
         token: str
 ) -> Any:
@@ -125,7 +101,7 @@ def confirm_email(
     email_confirmed flag to True and returns a JSON response with a status code of 200 and a
     message indicating that the email has been confirmed.
     """
-    user: UserORM = auth_service.get_access_user(token=token, db=db)
+    user: UserORM = await auth_service.get_email_user(token=token, db=db)
     if user.email_confirmed:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
@@ -135,7 +111,7 @@ def confirm_email(
         )
 
     user.email_confirmed = True
-    db.commit()
+    await db.commit()
     return JSONResponse(
         status_code=200,
         content={
