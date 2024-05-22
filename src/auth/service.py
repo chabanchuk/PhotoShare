@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from userprofile.orm import UserORM
+from userprofile.orm import UserORM, BlacklistORM
 from database import get_db
 from settings import settings
 
@@ -81,6 +81,7 @@ class Authentication:
 
         payload = {
             "sub": email,
+            "iat": current_time,
             "exp": expiration_time,
             "scope": scope
         }
@@ -258,3 +259,46 @@ class Authentication:
             db=db,
             scope="email_token"
         )
+      
+    async def has_access_to_delete_tag(
+            self,
+            user: UserORM,
+            tag_owner_id: int
+    ) -> bool:
+        """
+        Checks if the user has permission to delete the tag.
+
+        Parameters:
+            user (UserORM): The user who wants to remove the tag.
+            tag_owner_id (int): ID of the user who owns the tag.
+
+        Returns:
+            bool: True if the user has access to remove the tag, False otherwise.
+        """
+        if user.role in ['moderator', 'admin']:
+            return True
+        return user.id == tag_owner_id
+
+    async def add_to_blacklist(self, token: str, expires_delta: float,
+                               db: Annotated[AsyncSession, Depends(get_db)]):
+
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_delta)
+        blacklist_token = BlacklistORM(token=token, expires_at=expires_at)
+        db.add(blacklist_token)
+        await db.commit()
+        await db.refresh(blacklist_token)
+
+    async def is_blacklisted_token(self, token: str,
+                                   db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
+
+        blacklist_token = await db.execute(select(BlacklistORM).filter(BlacklistORM.token == token))
+        blacklist_token = blacklist_token.scalars().first()
+        if blacklist_token:
+            if blacklist_token.expires_at < datetime.utcnow():
+                # Token has expired, remove from blacklist
+                await db.delete(blacklist_token)
+                await db.commit()
+                return False
+            return True
+        return False
+

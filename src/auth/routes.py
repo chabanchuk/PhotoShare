@@ -1,3 +1,4 @@
+from jose import jwt
 from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,6 +93,7 @@ async def login(
                 ]}
         )
 
+      
     if not user_db.email_confirmed:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -101,6 +103,7 @@ async def login(
                 ]
             }
         )
+
 
     access_token = await auth_service.create_access_token(user.username)
     refresh_token = await auth_service.create_refresh_token(user.username)
@@ -160,29 +163,21 @@ async def refresh(
 
 
 @router.get("/logout")
-async def logout(
-        user: Annotated[UserORM, Depends(auth_service.get_access_user)],
-        db: Annotated[AsyncSession, Depends(get_db)]
-) -> Any:
-    """
-    Logs out a user by setting the 'loggedin' attribute of the UserORM object to False.
+async def logout(token: Annotated[str, Depends(auth_service.oauth2_schema)],
+                 user: Annotated[UserORM, Depends(auth_service.get_access_user)],
+                 db: Annotated[AsyncSession, Depends(get_db)]
+                 ) -> Any:
 
-    Parameters:
-        user (Annotated[UserORM, Depends(auth_service.get_access_user)]): The UserORM object representing the user
-        to be logged out.
-        db (Annotated[AsyncSession, Depends(get_db)]): The AsyncSession object representing the database session.
-
-    Returns:
-        Any: A dictionary containing the details of the logout operation.
-
-    Raises:
-        HTTPException: If an internal server error occurs during the logout process.
-    """
     try:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         user.loggedin = False
+
+        payload = jwt.decode(token, auth_service.SECRET_256, algorithms=[auth_service.ACCESS_ALGORITHM])
+        expires_delta = payload["exp"] - payload["iat"]
+
+        await auth_service.add_to_blacklist(token, expires_delta, db)
         await db.commit()
         return {"details": "User logged out"}
     except Exception as e:
