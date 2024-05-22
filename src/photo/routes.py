@@ -93,8 +93,12 @@ async def transform_photo(
     transformations = {key: value for key, value in locals().items() if key != 'db' and key != 'photo_id' and value is not None}
     try:
         transformed_url = upload(db_photo.url, **transformations)
+        destroy(db_photo.public_id)
+        if db_photo.qrcode_url not in [None, '']:
+            destroy(db_photo.qrcode_public_id)
         db_photo.url = transformed_url['secure_url']
         db_photo.public_id = transformed_url['public_id']
+        db_photo.qrcode_url = None
         db.add(db_photo)
         await db.commit()
         await db.refresh(db_photo)
@@ -122,6 +126,7 @@ async def create_photo_link_and_qrcode(db: Annotated[AsyncSession, Depends(get_d
     # Upload the image to Cloudinary
     cloudinary_result = upload(img_bytes.read(), folder="qrcode/")
     db_photo.qrcode_url = cloudinary_result['secure_url']
+    db_photo.qrcode_public_id = cloudinary_result['public_id']
     await db.commit()
     await db.refresh(db_photo)
     return PhotoResponse.from_orm(db_photo)
@@ -189,6 +194,8 @@ async def delete_photo(db: Annotated[AsyncSession, Depends(get_db)],
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     destroy(photo.public_id)
+    if photo.qrcode_url not in [None, '']:
+        destroy(photo.qrcode_public_id)
     await db.delete(photo)
     await db.commit()
 

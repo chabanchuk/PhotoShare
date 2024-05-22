@@ -24,6 +24,7 @@ class PhotoORM(Base):
     url: Mapped[str] = mapped_column(String, nullable=False)
     public_id: Mapped[str] = mapped_column(String, nullable=False)
     qrcode_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    qrcode_public_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     author_fk: Mapped[int] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
     # relations
     author: Mapped["ProfileORM"] = relationship("ProfileORM", back_populates="photos")
