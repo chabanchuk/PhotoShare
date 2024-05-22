@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import selectinload
 
 from database import get_db
-from auth.service import Authentication as auth_service
+from auth.service import Authentication
 from userprofile.model import (UserPublicProfileModel,
                                UserProfileModel,
                                UserEditableProfileModel,
@@ -17,7 +17,7 @@ from userprofile.orm import ProfileORM, UserORM
 
 import utils.model_utilities as model_util
 
-# auth_service = Authentication()
+auth_service = Authentication()
 
 router = APIRouter(prefix="/user", tags=["user profile"])
 
@@ -302,9 +302,9 @@ async def patch_my_profile_field(
         )
     update_values = update_model.model_dump(exclude_unset=True)
     stmnt = (
-        update(orm_model)
-        .where(orm_model.id == user.id)
-        .values(update_values)
+         update(orm_model)
+         .where(Column(id_column) == user.id)
+         .values(**update_values)
     )
     res = await db.execute(stmnt)
 
@@ -378,14 +378,14 @@ async def set_my_profile_field(
                 "detail": f"Value {value} is invalid for {field}."
             }
         )
+
     update_values = update_model.model_dump(exclude_unset=True)
     stmnt = (
         update(orm_model)
-        .where(orm_model.id == user.id)
-        .values(update_values)
+        .where(Column(id_column) == user.id)
+        .values(**update_values)
     )
-    await db.execute(stmnt)
-    await db.commit()
+    res = await db.execute(stmnt)
 
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
         .options(
@@ -407,7 +407,7 @@ async def set_my_profile_field(
 
 @router.patch("/profile/me",
               response_model=UserProfileModel)
-async def set_my_profile_field(
+async def patch_my_profile(
         profile_data: UserEditableProfileModel,
         user: Annotated[UserORM, Depends(auth_service.get_access_user)],
         db: Annotated[AsyncSession, Depends(get_db)]
@@ -470,7 +470,12 @@ async def set_my_profile_field(
         )
         await db.execute(stmnt)
 
-    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
+    stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id) \
+        .options(
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos),
+        selectinload(ProfileORM.user)
+    )
     db_response = await db.execute(stmnt)
     db_profile = db_response.scalars().first()
 
@@ -534,7 +539,7 @@ async def delete_my_profile_field(
              .where(Column(id_column) == user.id)
              .values(**{field: None}))
     await db.execute(stmnt)
-    await db.commit()
+    await db.flush(orm_model)
 
     stmnt = select(ProfileORM).filter(ProfileORM.user_id == user.id)
     db_response = await db.execute(stmnt)

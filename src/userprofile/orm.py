@@ -1,9 +1,8 @@
 from datetime import datetime, timezone, date
 from typing import Optional, Any, List, TypeAlias, Literal
 
-from sqlalchemy import String, Date, ForeignKey, DateTime
+from sqlalchemy import String, Date, ForeignKey, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from comment.orm import CommentORM
 from database import Base, get_db
@@ -66,7 +65,6 @@ class UserORM(Base):
     # password contains hashed password
     password: Mapped[str] = mapped_column(nullable=False)
     loggedin: Mapped[bool] = mapped_column(default=False)
-    # email_confirmed: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
     )
@@ -93,10 +91,3 @@ class ProfileORM(Base):
     user: Mapped[UserORM] = relationship(back_populates='profile')
     photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
     comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")
-
-
-class BlacklistORM(Base):
-    __tablename__ = "blacklist_tokens"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    token: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

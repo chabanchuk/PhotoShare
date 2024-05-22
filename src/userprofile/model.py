@@ -35,9 +35,8 @@ class UserDBModel(UserAuthModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: PositiveInt
-    email: EmailStr
-    password: str = Field(max_length=255)
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
+    role: Role
 
 
 class UserProfileModel(BaseModel):
@@ -85,8 +84,8 @@ class UserPublicProfileModel(BaseModel):
     last_name: Optional[str]
     registered_at: datetime = Field(default=datetime.now(timezone.utc))
     role: Role = Field(default='user')
-    photos: PositiveInt = Field(default=0)
-    comments: PositiveInt = Field(default=0)
+    photos: int = Field(ge=0, default=0)
+    comments: int = Field(ge=0, default=0)
 
     @computed_field
     @property
