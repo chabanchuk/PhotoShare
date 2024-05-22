@@ -38,8 +38,7 @@ class Photo(Base):
     owner = relationship("User", back_populates="photos")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
-    tags = Column(String)  # список тегів, розділених комами
-
+    tags = Column(String)  
 
 Base.metadata.create_all(bind=engine)
 
@@ -79,7 +78,7 @@ def startup_event():
         print(f"Created user: {user.username}, role: {user.role}")
     db.close()
 
-
+5
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
