@@ -259,8 +259,7 @@ class Authentication:
             db=db,
             scope="email_token"
         )
-
-
+      
     async def has_access_to_delete_tag(
             self,
             user: UserORM,
@@ -302,3 +301,4 @@ class Authentication:
                 return False
             return True
         return False
+

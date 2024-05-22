@@ -66,6 +66,7 @@ class UserORM(Base):
     # password contains hashed password
     password: Mapped[str] = mapped_column(nullable=False)
     loggedin: Mapped[bool] = mapped_column(default=False)
+
     # email_confirmed: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc)
@@ -79,17 +80,18 @@ class ProfileORM(Base):
     ORM mapping for ProfileData
     """
     __tablename__ = "profiles"
-    # Table columns
+
     id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(20))
     last_name: Mapped[Optional[str]] = mapped_column(String(20))
+
     # full_name: Mapped[str] = mapped_column(String(),
     #                                        unique=True,
     #                                        default=full_name_calculated_default,
     #                                        onupdate=full_name_calculated_update)
+
     birthday: Mapped[Optional[date]] = mapped_column(Date())
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    # Realtions
     user: Mapped[UserORM] = relationship(back_populates='profile')
     photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
     comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")
