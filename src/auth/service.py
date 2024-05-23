@@ -62,7 +62,7 @@ class Authentication:
             salt=self.HASH_SERVICE.gensalt()
         ).decode()
 
-    async def create_token(
+    def create_token(
             self,
             email: str,
             scope: Scope,
@@ -92,30 +92,30 @@ class Authentication:
 
         return jwt_token
 
-    async def create_access_token(
+    def create_access_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=1)
     ) -> Any:
-        return await self.create_token(email=email,
+        return self.create_token(email=email,
                                        live_time=live_time,
                                        scope="access_token")
 
-    async def create_refresh_token(
+    def create_refresh_token(
             self,
             email: str,
             live_time: timedelta = timedelta(days=7)
     ) -> Any:
-        return await self.create_token(email=email,
+        return self.create_token(email=email,
                                        scope="refresh_token",
                                        live_time=live_time)
 
-    async def create_email_token(
+    def create_email_token(
             self,
             email: str,
             live_time: timedelta = timedelta(hours=12)
     ) -> Any:
-        return await self.create_token(email=email,
+        return self.create_token(email=email,
                                        live_time=live_time,
                                        scope="email_token")
 
@@ -259,8 +259,8 @@ class Authentication:
             db=db,
             scope="email_token"
         )
-      
-    async def has_access_to_delete_tag(
+
+    def has_access_to_delete_tag(
             self,
             user: UserORM,
             tag_owner_id: int
@@ -294,7 +294,7 @@ class Authentication:
         blacklist_token = await db.execute(select(BlacklistORM).filter(BlacklistORM.token == token))
         blacklist_token = blacklist_token.scalars().first()
         if blacklist_token:
-            if blacklist_token.expires_at < datetime.utcnow():
+            if blacklist_token.issued_at < datetime.utcnow():
                 # Token has expired, remove from blacklist
                 await db.delete(blacklist_token)
                 await db.commit()

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, date
 from typing import Optional, Any, List, TypeAlias, Literal
 
-from sqlalchemy import String, Date, ForeignKey, event
+from sqlalchemy import String, Date, ForeignKey, event, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from comment.orm import CommentORM
@@ -95,3 +95,10 @@ class ProfileORM(Base):
     user: Mapped[UserORM] = relationship(back_populates='profile')
     photos: Mapped[List["PhotoORM"]] = relationship(back_populates='author')
     comments: Mapped[List["CommentORM"]] = relationship(back_populates="author")
+
+
+class BlacklistORM(Base):
+    __tablename__ = "blacklist_tokens"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
