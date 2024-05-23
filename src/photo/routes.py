@@ -34,6 +34,17 @@ cloudinary.config(
 
 
 async def get_profile(user_id: int, db: AsyncSession):
+    """
+        Returns the profile of a user.
+
+        Args:
+            user_id (int): The ID of the user.
+            db (AsyncSession): The database session.
+
+        Returns:
+            Union[JSONResponse, ProfileORM]: If the profile is found, returns the profile.
+            Otherwise, returns a JSONResponse with a 404 status code and a message "Profile not found".
+    """
     query = select(ProfileORM).filter_by(user_id=user_id)
     result = await db.execute(query)
     profile = result.scalars().first()
@@ -84,6 +95,29 @@ async def transform_photo(
     brightness: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
 ):
+    """
+        Transforms a photo with the specified transformations and updates the database with the new photo details.
+
+        Args:
+            db (AsyncSession): The database session.
+            user (UserORM): The authenticated user.
+            photo_id (int): The ID of the photo to transform.
+            width (Optional[int]): The width of the transformed photo.
+            height (Optional[int]): The height of the transformed photo.
+            crop (Optional[str]): The cropping parameters for the transformed photo.
+            gravity (Optional[str]): The gravity for the cropping of the transformed photo.
+            radius (Optional[str]): The radius for the transformation of the photo.
+            effect (Optional[str]): The effect to apply to the photo.
+            quality (Optional[str]): The quality of the transformed photo.
+            brightness (Optional[str]): The brightness adjustment for the photo.
+            color (Optional[str]): The color adjustment for the photo.
+
+        Returns:
+            PhotoResponse: The updated photo details.
+
+        Raises:
+            HTTPException: If the photo is not found or if there is an error during the transformation process.
+    """
     profile = await get_profile(user.id, db)
     query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
     result = await db.execute(query)
@@ -110,6 +144,20 @@ async def transform_photo(
 @router.patch("/{qrcode}",response_model=PhotoResponse, status_code=status.HTTP_200_OK)
 async def create_photo_link_and_qrcode(db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserORM, Depends(auth_service.get_access_user)], photo_id: int = Form(...)):
+    """
+        Generates a QR code for the photo URL and updates the photo in the database with the QR code image details.
+
+        Args:
+            db (AsyncSession): The database session.
+            user (UserORM): The authenticated user.
+            photo_id (int): The ID of the photo for which to generate the QR code.
+
+        Returns:
+            PhotoResponse: The updated photo details, including the QR code image URL.
+
+        Raises:
+            HTTPException: If the photo is not found.
+    """
     profile = await get_profile(user.id, db)
     query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
     result = await db.execute(query)
@@ -135,6 +183,17 @@ async def create_photo_link_and_qrcode(db: Annotated[AsyncSession, Depends(get_d
 @router.get("/", response_model=List[PhotoResponse])
 async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0, ge=0),
                      db: AsyncSession = Depends(get_db)):
+    """
+        Retrieves a list of photos with pagination.
+
+        Args:
+            limit (int): The maximum number of photos to return. Must be between 1 and 10.
+            offset (int): The number of photos to skip before starting to collect the result set. Must be greater than or equal to 0.
+            db (AsyncSession): The database session.
+
+        Returns:
+            List[PhotoResponse]: A list of photo details, limited by the `limit` and offset by the `offset`.
+        """
     query = select(PhotoORM).offset(offset).limit(limit)
     result = await db.execute(query)
     photos = result.scalars().all()
@@ -143,6 +202,19 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
 
 @router.get("/{photo_id}", response_model=PhotoResponse)
 async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
+    """
+        Retrieves a single photo by its ID, including its comments and tags.
+
+        Args:
+            photo_id (int): The ID of the photo to retrieve.
+            db (AsyncSession): The database session.
+
+        Returns:
+            PhotoResponse: The photo details, including its comments and tags.
+
+        Raises:
+            HTTPException: If the photo is not found.
+    """
     query = select(PhotoORM).filter_by(id=photo_id)\
         .options(selectinload(PhotoORM.comments), selectinload(PhotoORM.tags))
     result = await db.execute(query)
@@ -154,14 +226,29 @@ async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.get("/{author_fullname}", response_model=List[PhotoResponse])
 async def get_photos_by_author(author_username: str, db: AsyncSession = Depends(get_db)):
+    """
+        Retrieves a list of photos by the author's username, including their comments and tags.
+
+        Args:
+            author_username (str): The username of the author whose photos to retrieve.
+            db (AsyncSession): The database session.
+
+        Returns:
+            List[PhotoResponse]: A list of photo details, including their comments and tags, authored by the specified user.
+
+        Raises:
+            HTTPException: If the user or profile is not found.
+    """
     query1 = select(UserORM).filter_by(username=author_username)
     result = await db.execute(query1)
     user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=404, detail="User not found")
     query2 = select(ProfileORM).filter_by(user_id=user.id)
     result = await db.execute(query2)
     profile = result.scalars().first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
     query = select(PhotoORM).filter_by(author_fk=profile.id)\
         .options(selectinload(PhotoORM.comments), selectinload(PhotoORM.tags))
     result = await db.execute(query)
