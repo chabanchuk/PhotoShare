@@ -123,7 +123,7 @@ async def create_comment(
               response_model=CommentModel)
 async def update_comment(
         comment_id: int,
-        comment: Annotated[CommentUpdate, Depends()],
+        comment: CommentUpdate,
         db: Annotated[AsyncSession, Depends(get_db)],
         user: Annotated[UserORM, Depends(auth_service.get_access_user)]
 ) -> Any:
@@ -137,23 +137,43 @@ async def update_comment(
     db_comment = db_resp.scalars().first()
 
     if db_comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": "Comment not found."
+            }
+        )
 
     stmt_profile = select(ProfileORM).where(ProfileORM.user_id == user.id)
     db_resp_profile = await db.execute(stmt_profile)
     db_profile = db_resp_profile.scalars().first()
 
     if db_profile is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"User with username: {user.username} not found."
+            }
+        )
 
     if db_profile.id != db_comment.author_fk:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": ("Only authors and moderators"
+                           " are allowed to edit comments.")
+            }
+        )
 
     if comment.text:
         db_comment.text = comment.text
+        db_comment.updated_at = datetime.now(timezone.utc)
+
     await db.commit()
     await db.refresh(db_comment)
+
     return CommentModel.from_orm(db_comment)
+
 
 @router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_comment(comment_id: int, db: AsyncSession = Depends(get_db), user: UserORM = Depends(auth_service.get_access_user)):

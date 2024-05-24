@@ -9,7 +9,7 @@ class CommentBase(BaseModel):
     """
     Base model for a comment
     """
-    text: str
+    text: str = Field(min_length=1)
 
 
 class CommentCreate(CommentBase):
