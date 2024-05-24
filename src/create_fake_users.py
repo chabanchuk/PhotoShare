@@ -42,6 +42,7 @@ async def create_fake_user_and_profile():
 
                 session.add(profile)
 
+
 async def main():
     await create_fake_user_and_profile()
 
