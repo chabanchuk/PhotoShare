@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List
+from typing import List, Annotated, Any
 from datetime import datetime, timezone
 from database import get_db
 from comment.model import CommentModel, CommentCreate, CommentUpdate
@@ -14,12 +15,15 @@ auth_service = Authentication()
 
 router = APIRouter(
     prefix="/comments",
-    tags=["comments"],
-    responses={404: {"description": "Not found"}},
+    tags=["comments"]
 )
 
-@router.get("/", response_model=List[CommentModel], status_code=status.HTTP_200_OK)
-async def read_comments(db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 100):
+@router.get("/",
+            response_model=List[CommentModel])
+async def read_comments(
+        db: AsyncSession = Depends(get_db),
+        skip: int = 0,
+        limit: int = 10):
     """
     Read a list of comments.
     - **skip**: Number of records to skip for pagination.
@@ -30,8 +34,13 @@ async def read_comments(db: AsyncSession = Depends(get_db), skip: int = 0, limit
     comments = result.scalars().all()
     return [CommentModel.from_orm(comment) for comment in comments]
 
-@router.get("/{comment_id}", response_model=CommentModel, status_code=status.HTTP_200_OK)
-async def get_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
+
+@router.get("/{comment_id}",
+            response_model=CommentModel)
+async def get_comment(
+        comment_id: int,
+        db: Annotated[AsyncSession, Depends(get_db)]
+) -> Any:
     """
     Get a specific comment by ID.
     - **comment_id**: ID of the comment to retrieve.
@@ -41,15 +50,24 @@ async def get_comment(comment_id: int, db: AsyncSession = Depends(get_db)):
     db_comment = db_resp.scalars().first()
 
     if db_comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"Comment with id: {comment_id} not found."
+            }
+        )
 
     return CommentModel.from_orm(db_comment)
 
-@router.post("/{photo_id}", response_model=CommentModel, status_code=status.HTTP_201_CREATED)
-async def create_comment(comment: CommentCreate,
-                         photo_id: int,
-                         db: AsyncSession = Depends(get_db),
-                         user: UserORM = Depends(auth_service.get_access_user)):
+
+@router.post("/{photo_id}",
+             response_model=CommentModel)
+async def create_comment(
+        comment: CommentCreate,
+        photo_id: int,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[UserORM, Depends(auth_service.get_access_user)]
+) -> Any:
     """
     Create a new comment for a specific photo.
     - **comment**: Comment data.
@@ -60,7 +78,32 @@ async def create_comment(comment: CommentCreate,
     db_profile = db_resp.scalars().first()
     
     if db_profile is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"User with username {user.username} not found."
+            }
+        )
+
+    stmt = select(PhotoORM).where(PhotoORM.id == photo_id)
+    db_resp = await db.execute(stmt)
+    db_photo = db_resp.scalars().first()
+
+    if db_photo is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"Poto with id: {photo_id} not found."
+            }
+        )
+
+    if db_photo.author_fk == db_profile.id:
+        return JSONResponse(
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+            content={
+                "detail": "Author is not permitted to comment his photos."
+            }
+        )
 
     db_comment = CommentORM(
         text=comment.text,
@@ -68,13 +111,22 @@ async def create_comment(comment: CommentCreate,
         photo_fk=photo_id,
         created_at=datetime.now(timezone.utc)
     )
+
     db.add(db_comment)
     await db.commit()
     await db.refresh(db_comment)
+
     return CommentModel.from_orm(db_comment)
 
-@router.patch("/{comment_id}", response_model=CommentModel, status_code=status.HTTP_200_OK)
-async def update_comment(comment_id: int, comment: CommentUpdate, db: AsyncSession = Depends(get_db), user: UserORM = Depends(auth_service.get_access_user)):
+
+@router.patch("/{comment_id}",
+              response_model=CommentModel)
+async def update_comment(
+        comment_id: int,
+        comment: Annotated[CommentUpdate, Depends()],
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[UserORM, Depends(auth_service.get_access_user)]
+) -> Any:
     """
     Update an existing comment.
     - **comment_id**: ID of the comment to update.

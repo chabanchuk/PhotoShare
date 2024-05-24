@@ -31,8 +31,9 @@ class CommentModel(CommentBase):
     Model for a comment in the database
     """
     model_config = ConfigDict(from_attributes=True)
+
     id: PositiveInt
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = Field(default=None)
     author_fk: int
     photo_fk: int

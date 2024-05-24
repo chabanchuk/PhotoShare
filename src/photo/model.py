@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class PhotoModel(BaseModel):
-    description: str = Field(min_length=3, max_length=250)
+    description: str = Field(min_length=1, max_length=255)
 
 
 class TransformRequest(BaseModel):
