@@ -14,6 +14,7 @@ import qrcode
 from database import get_db
 from photo.model import PhotoResponse, PhotoUpdate, PhotoModel, TransformRequest, PhotoCreateQR
 from photo.orm import PhotoORM
+from tags.orm import TagORM
 from userprofile.orm import ProfileORM, UserORM
 from settings import settings
 import qrcode.image.svg
@@ -141,6 +142,48 @@ async def transform_photo(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/{tags}", status_code=status.HTTP_201_CREATED)
+async def add_tags_to_photo(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[UserORM, Depends(auth_service.get_access_user)],
+    photo_id: int = Form(...),
+    tag_names: List[str] = Form(...)
+):
+    """
+    Add tags to a photo.
+
+    This endpoint allows the user to add up to 5 tags to a photo.
+
+    Args:
+        db (AsyncSession): The database session.
+        user (UserORM): The authenticated user.
+        photo_id (int): The ID of the photo to which tags will be added.
+        tag_names (List[str]): A list of tag names to add to the photo.
+
+    Returns:
+        Response: A response with a 201 Created status code, indicating that the tags were successfully added.
+
+    Raises:
+        HTTPException: If the photo is not found, if the user does not have permission to add tags to the photo,
+                       or if adding the tags would exceed the limit of 5 tags per photo.
+    """
+    profile = await get_profile(user.id, db)
+    query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
+    result = await db.execute(query)
+    photo = result.scalars().first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    # Check the current number of tags and limit to 5
+    if len(photo.tags) + len(tag_names) > 5:
+        raise HTTPException(status_code=400, detail="Adding these tags would exceed the limit of 5 tags per photo")
+    tags_to_add = await db.scalars(select(TagORM).where(TagORM.name.in_(tag_names)))
+    tags_to_add = tags_to_add.all()
+    photo.tags.extend(tags_to_add)
+    await db.commit()
+
+    return Response(status_code=status.HTTP_201_CREATED)
+
+
 @router.patch("/{qrcode}",response_model=PhotoResponse, status_code=status.HTTP_200_OK)
 async def create_photo_link_and_qrcode(db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserORM, Depends(auth_service.get_access_user)], photo_id: int = Form(...)):
@@ -216,12 +259,41 @@ async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
             HTTPException: If the photo is not found.
     """
     query = select(PhotoORM).filter_by(id=photo_id)\
-        .options(selectinload(PhotoORM.comments), selectinload(PhotoORM.tags))
+        .options(selectinload(PhotoORM.comments))
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     return PhotoResponse.from_orm(db_photo)
+
+
+@router.get("/{tag_name}", response_model=List[PhotoResponse])
+async def get_photos_by_tag(
+    tag_name: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[UserORM, Depends(auth_service.get_access_user)]
+):
+    """
+    Get all photos associated with a tag.
+
+    This endpoint allows the user to retrieve a list of photos associated with a tag specified by its name.
+
+    Args:
+        tag_name (str): The name of the tag.
+        db (AsyncSession): The database session.
+        user (UserORM): The authenticated user.
+
+    Returns:
+        List[PhotoResponse]: A list of photos associated with the tag.
+
+    Raises:
+        HTTPException: If the tag is not found.
+    """
+    tag = await db.scalar(select(TagORM).where(TagORM.name == tag_name))
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    photos = tag.photos
+    return [PhotoResponse.from_orm(photo) for photo in photos]
 
 
 @router.get("/{author_fullname}", response_model=List[PhotoResponse])
@@ -259,8 +331,30 @@ async def get_photos_by_author(author_username: str, db: AsyncSession = Depends(
 @router.put("/{photo_id}", response_model=PhotoResponse)
 async def update_photo(db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserORM, Depends(auth_service.get_access_user)], photo_id: int, description: str = Form()):
+    """
+        Update a photo's description.
+
+        This endpoint allows the user to update the description of a photo. The user must be an admin to update any photo,
+        otherwise, they can only update their own photos.
+
+        Args:
+            db (AsyncSession): The database session.
+            user (UserORM): The authenticated user.
+            photo_id (int): The ID of the photo to update.
+            description (str): The new description for the photo.
+
+        Returns:
+            PhotoResponse: The updated photo.
+
+        Raises:
+            HTTPException: If the photo is not found or if the user does not have permission to update the photo.
+    """
     profile = await get_profile(user.id, db)
-    query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
+    # Check if the user's role is 'admin'
+    if user.role != 'admin':
+        query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
+    else:
+        query = select(PhotoORM).where(PhotoORM.id == photo_id)
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
@@ -274,8 +368,29 @@ async def update_photo(db: Annotated[AsyncSession, Depends(get_db)],
 @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_photo(db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserORM, Depends(auth_service.get_access_user)], photo_id: int):
+    """
+        Delete a photo.
+
+        This endpoint allows the user to delete a photo. The user must be an admin to delete any photo,
+        otherwise, they can only delete their own photos.
+
+        Args:
+            db (AsyncSession): The database session.
+            user (UserORM): The authenticated user.
+            photo_id (int): The ID of the photo to delete.
+
+        Returns:
+            Response: A response with a 204 No Content status code, indicating that the photo was successfully deleted.
+
+        Raises:
+            HTTPException: If the photo is not found or if the user does not have permission to delete the photo.
+    """
     profile = await get_profile(user.id, db)
-    query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
+    # Check if the user's role is 'admin'
+    if user.role != 'admin':
+        query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
+    else:
+        query = select(PhotoORM).where(PhotoORM.id == photo_id)
     result = await db.execute(query)
     photo = result.scalars().first()
     if not photo:

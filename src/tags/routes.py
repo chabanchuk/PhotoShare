@@ -60,6 +60,8 @@ async def read_tag(tag_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Tag not found")
     return TagResponseModel.from_orm(tag)
 
+
+
 @router.put("/{tag_id}", response_model=TagResponseModel)
 async def update_tag(
     tag_id: int,
