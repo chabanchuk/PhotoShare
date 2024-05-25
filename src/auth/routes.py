@@ -13,11 +13,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 from starlette.requests import Request
 
-from userprofile.model import TokenModel, UserAuthModel, UserDBModel
+from userprofile.model import TokenModel, UserAuthModel, UserDBModel, UserRegisterModel
 from database import get_db
 
 from auth.service import auth as auth_service
-from userprofile.orm import UserORM
+from userprofile.orm import UserORM, ProfileORM
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -31,7 +31,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     },
 )
 async def new_user(
-    user: UserAuthModel, db: Annotated[AsyncSession, Depends(get_db)]
+        user: UserRegisterModel,
+        db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
     exists = await db.execute(
         select(UserORM).filter(
@@ -51,6 +52,11 @@ async def new_user(
 
     hashed_pwd = auth_service.get_hash_password(user.password)
     user_orm = UserORM(email=user.email, username=user.username, password=hashed_pwd)
+    user_orm.profile = ProfileORM(user=user_orm,
+                                  **user.model_dump(exclude={
+                                      "email", "username", "password"},
+                                      exclude_unset=True))
+
     db.add(user_orm)
     await db.commit()
     await db.refresh(user_orm)
@@ -59,6 +65,7 @@ async def new_user(
     ret_user = ret_user.scalars().first()
     user_db_model = UserDBModel.from_orm(ret_user)
     user_db_model.registered_at = user_db_model.registered_at.isoformat()
+
     return JSONResponse(
         status_code=201,
         content={

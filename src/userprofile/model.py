@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import (BaseModel,
                       EmailStr,
@@ -17,6 +17,16 @@ class UserAuthModel(BaseModel):
     username: str
     email: EmailStr
     password: str
+
+
+class UserRegisterModel(UserAuthModel):
+    """
+    Model that is used to meet OAuth2 requirements
+    """
+    first_name: Optional[str] = Field(default=None)
+    last_name: Optional[str] = Field(default=None)
+    birthday: Optional[PastDate] = Field(default=None)
+
 
 
 class UserDBModel(UserAuthModel):
@@ -94,7 +104,7 @@ class UserPublicProfileModel(BaseModel):
 
 class UserEditableProfileModel(BaseModel):
     username: Optional[str] = Field(min_length=3, default=None)
-    email: Optional[EmailStr] = None
-    birthday: Optional[PastDate] = None
+    email: Optional[EmailStr] = Field(default=None)
+    birthday: Optional[PastDate] = Field(default=None)
     first_name: Optional[str] = Field(min_length=3, default=None)
     last_name: Optional[str] = Field(min_length=3, default=None)

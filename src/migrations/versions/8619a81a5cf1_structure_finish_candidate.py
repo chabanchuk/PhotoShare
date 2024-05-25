@@ -1,8 +1,8 @@
-"""init_4
+"""structure_finish_candidate
 
-Revision ID: f21230f11cff
+Revision ID: 8619a81a5cf1
 Revises: 
-Create Date: 2024-05-25 16:52:02.770906
+Create Date: 2024-05-25 20:19:57.383445
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f21230f11cff'
+revision: str = '8619a81a5cf1'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -29,6 +29,12 @@ def upgrade() -> None:
     sa.Column('expire_refresh', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('token')
+    )
+    op.create_table('tags',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('tag', sa.String(length=50), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('tag')
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -51,14 +57,6 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
-    )
-    op.create_table('tags',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=50), nullable=False),
-    sa.Column('owner_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
     )
     op.create_table('photos',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -101,8 +99,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_comments_id'), table_name='comments')
     op.drop_table('comments')
     op.drop_table('photos')
-    op.drop_table('tags')
     op.drop_table('profiles')
     op.drop_table('users')
+    op.drop_table('tags')
     op.drop_table('blacklist')
     # ### end Alembic commands ###

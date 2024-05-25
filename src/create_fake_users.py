@@ -7,6 +7,7 @@ from database import get_db
 
 fake = Faker()
 
+
 async def create_fake_user_and_profile():
     async with get_db() as session:
         async with session.begin():
@@ -42,8 +43,10 @@ async def create_fake_user_and_profile():
 
                 session.add(profile)
 
+
 async def main():
     await create_fake_user_and_profile()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
