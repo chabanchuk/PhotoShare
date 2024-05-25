@@ -57,7 +57,9 @@ async def get_profile(user_id: int, db: AsyncSession):
     return profile
 
 
-@router.post("/", response_model=PhotoResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/",
+             response_model=PhotoResponse
+             )
 async def create_photo(
         db: Annotated[AsyncSession, Depends(get_db)],
         user: Annotated[UserORM, Depends(auth_service.get_access_user)],
@@ -69,12 +71,14 @@ async def create_photo(
     file_content = await file.read()
     file_size = len(file_content)
     if file_size > max_file_size:
-        raise HTTPException(status_code=413, detail="File size exceeds the limit of 3 megabytes")
+        raise HTTPException(status_code=413,
+                            detail="File size exceeds the limit of 3 megabytes")
     await file.seek(0)
     cloudinary_result = upload(file.file, folder="photos/")
     photo = PhotoModel(description=description)
-    db_photo = PhotoORM(url=cloudinary_result['secure_url'], public_id=cloudinary_result['public_id'],
-            description=photo.description, author_fk=profile.id)
+    db_photo = PhotoORM(url=cloudinary_result['secure_url'],
+                        public_id=cloudinary_result['public_id'],
+                        description=photo.description, author_fk=profile.id)
     db.add(db_photo)
     await db.commit()
     await db.refresh(db_photo)
@@ -105,9 +109,12 @@ async def transform_photo(
             photo_id (int): The ID of the photo to transform.
             width (Optional[int]): The width of the transformed photo.
             height (Optional[int]): The height of the transformed photo.
-            crop (Optional[str]): The cropping parameters for the transformed photo.
-            gravity (Optional[str]): The gravity for the cropping of the transformed photo.
-            radius (Optional[str]): The radius for the transformation of the photo.
+            crop (Optional[str]): The cropping parameters for the transformed
+                photo.
+            gravity (Optional[str]): The gravity for the cropping of the
+                transformed photo.
+            radius (Optional[str]): The radius for the transformation
+                of the photo.
             effect (Optional[str]): The effect to apply to the photo.
             quality (Optional[str]): The quality of the transformed photo.
             brightness (Optional[str]): The brightness adjustment for the photo.
@@ -117,15 +124,20 @@ async def transform_photo(
             PhotoResponse: The updated photo details.
 
         Raises:
-            HTTPException: If the photo is not found or if there is an error during the transformation process.
+            HTTPException: If the photo is not found or if there is an
+                error during the transformation process.
     """
     profile = await get_profile(user.id, db)
-    query = select(PhotoORM).where(and_(PhotoORM.id == photo_id, PhotoORM.author_fk == profile.id))
+    query = select(PhotoORM).where(and_(PhotoORM.id == photo_id,
+                                        PhotoORM.author_fk == profile.id))
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
-    transformations = {key: value for key, value in locals().items() if key != 'db' and key != 'photo_id' and value is not None}
+    transformations = {key: value for key, value in locals().items()
+                       if key != 'db'
+                       and key != 'photo_id'
+                       and value is not None}
     try:
         transformed_url = upload(db_photo.url, **transformations)
         destroy(db_photo.public_id)
