@@ -19,9 +19,8 @@ from userprofile.orm import ProfileORM, UserORM
 from settings import settings
 import qrcode.image.svg
 from userprofile.orm import ProfileORM, UserORM
-from auth.service import Authentication
+from auth.service import auth as auth_service
 
-auth_service = Authentication()
 
 router = APIRouter(prefix='/photos', tags=["photos"])
 

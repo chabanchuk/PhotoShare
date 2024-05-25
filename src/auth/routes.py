@@ -15,12 +15,10 @@ from starlette.requests import Request
 from userprofile.model import TokenModel, UserAuthModel, UserDBModel
 from database import get_db
 
-from auth.service import Authentication
+from auth.service import auth as auth_service
 from userprofile.orm import UserORM
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-auth_service = Authentication()
 
 
 @router.post(

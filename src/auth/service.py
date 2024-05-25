@@ -117,12 +117,7 @@ class Authentication:
         Returns:
             Any: The generated access token.
         """
-        return self.create_token(
-            self,
-            email=email,
-            live_time=live_time,
-            scope="access_token"
-        )
+        return self.create_token(email=email, live_time=live_time, scope="access_token")
 
     def create_refresh_token(
         self, email: str, live_time: timedelta = timedelta(days=7)
@@ -138,16 +133,11 @@ class Authentication:
             Any: The generated refresh token.
         """
         return self.create_token(
-            self,
-            email=email,
-            live_time=live_time,
-            scope="refresh_token"
+            email=email, live_time=live_time, scope="refresh_token"
         )
 
     def create_email_token(
-        self,
-        email: str,
-        live_time: timedelta = timedelta(hours=12)
+        self, email: str, live_time: timedelta = timedelta(hours=12)
     ) -> Any:
         """
         Creates an email token with the given email and optional live time.
@@ -391,3 +381,6 @@ class Authentication:
             select(BlackListORM).filter(BlackListORM.username == username)
         )
         return blacklist_tokens.scalars().all()
+
+
+auth = Authentication()

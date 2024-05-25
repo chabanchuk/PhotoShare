@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import selectinload
 
 from database import get_db
-from auth.service import Authentication
+from auth.service import auth as auth_service
 from auth.require_role import require_role
 
 from userprofile.model import (UserPublicProfileModel,
@@ -19,7 +19,6 @@ from userprofile.orm import ProfileORM, UserORM
 
 import utils.model_utilities as model_util
 
-auth_service = Authentication()
 
 router = APIRouter(prefix="/user", tags=["user profile"])
 

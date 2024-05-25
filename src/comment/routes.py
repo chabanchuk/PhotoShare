@@ -9,10 +9,9 @@ from comment.model import CommentModel, CommentCreate, CommentUpdate
 from comment.orm import CommentORM
 from photo.orm import PhotoORM
 from userprofile.orm import ProfileORM, UserORM
-from auth.service import Authentication
+from auth.service import auth as auth_service
 from auth.require_role import require_role
 
-auth_service = Authentication()
 
 router = APIRouter(
     prefix="/comments",

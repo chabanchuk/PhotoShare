@@ -5,7 +5,7 @@ from database import get_db
 from tags.model import TagModel, TagCreate, TagResponseModel
 from tags.orm import TagORM
 from typing import List, Any
-from auth.service import Authentication
+from auth.service import auth as auth_service
 from userprofile.orm import UserORM
 
 router = APIRouter(
@@ -14,7 +14,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-auth_service = Authentication()
 
 def require_role(allowed_roles: List[str]):
     def role_checker(user: UserORM = Depends(auth_service.get_access_user)):

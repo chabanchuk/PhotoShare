@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from main import app
 
 from database import Base, get_db
-from auth.service import Authentication as auth_service
+from auth.service import auth as auth_service
 import logging
 
 
@@ -72,6 +72,5 @@ def user():
 def get_access_token():
     print("step: get_access_token")
     return auth_service.create_access_token(
-        auth_service,
         email="djedai@tatuin.emp"
     )
