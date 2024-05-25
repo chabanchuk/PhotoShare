@@ -9,10 +9,12 @@ from sqlalchemy.orm import selectinload
 
 from database import get_db
 from auth.service import Authentication
+from auth.require_role import require_role
+
 from userprofile.model import (UserPublicProfileModel,
                                UserProfileModel,
-                               UserEditableProfileModel,
-                               UserDBModel)
+                               UserEditableProfileModel)
+
 from userprofile.orm import ProfileORM, UserORM
 
 import utils.model_utilities as model_util
@@ -61,31 +63,30 @@ async def get_all_profiles(
             List[UserPublicProfileModel]: list of public profiles
             JSONResponse: error message if no profiles found
     """
-    async with db:
-        stmnt = select(ProfileORM).offset(offset).limit(limit).options(
-            selectinload(ProfileORM.user),
-            selectinload(ProfileORM.comments),
-            selectinload(ProfileORM.photos)
+    stmnt = select(ProfileORM).offset(offset).limit(limit).options(
+        selectinload(ProfileORM.user),
+        selectinload(ProfileORM.comments),
+        selectinload(ProfileORM.photos)
+    )
+    res = await db.execute(stmnt)
+    res = res.scalars().all()
+    if len(res) == 0:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "No profiles found"}
         )
-        res = await db.execute(stmnt)
-        res = res.scalars().all()
-        if len(res) == 0:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={"detail": "No profiles found"}
-            )
-        return_res = []
-        for profile in res:
-            profile_dump = dict(**profile.__dict__)
-            profile_dump['role'] = profile.user.role
-            profile_dump['photos'] = len(profile.photos)
-            profile_dump['comments'] = len(profile.comments)
-            profile_dump['username'] = profile.user.username
-            profile_dump['email'] = profile.user.email
-            public_profile = UserPublicProfileModel(
-                **profile_dump
-            )
-            return_res.append(public_profile)
+    return_res = []
+    for profile in res:
+        profile_dump = dict(**profile.__dict__)
+        profile_dump['role'] = profile.user.role
+        profile_dump['photos'] = len(profile.photos)
+        profile_dump['comments'] = len(profile.comments)
+        profile_dump['username'] = profile.user.username
+        profile_dump['email'] = profile.user.email
+        public_profile = UserPublicProfileModel(
+            **profile_dump
+        )
+        return_res.append(public_profile)
     return return_res
 
 
@@ -603,5 +604,89 @@ async def delete_profile(
         status_code=status.HTTP_204_NO_CONTENT,
         content={
             "detail": "Profile deleted."
+        }
+    )
+
+
+@router.get("/ban/{username: str}")
+async def ban_user(
+        username: str,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[UserORM, Depends(require_role(["admin"]))]  # noqa: F821
+) -> Any:
+    """
+    Ban user by username
+
+        Args:
+            username (str): username of user to ban
+            db (AsyncSession): session object used for database operations
+            user (UserORM): user object of authenticated user
+
+        Returns:
+            JSONResponse with 404 status code if user not found
+            JSONResponse with 403 status code if user is not admin
+            JSONResponse with 200 status code if user banned
+    """
+    stmnt = select(UserORM).filter(UserORM.username == username)
+    db_res = await db.execute(stmnt)
+    db_user = db_res.scalars().first()
+
+    if db_user is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"User with username {username} not found."
+            }
+        )
+
+    db_user.is_banned = True
+    await db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "detail": f"User {username} banned."
+        }
+    )
+
+
+@router.get("/unban/{username: str}")
+async def ban_user(
+        username: str,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[UserORM, Depends(require_role(["admin"]))]  # noqa: F821
+) -> Any:
+    """
+    Ban user by username
+
+        Args:
+            username (str): username of user to ban
+            db (AsyncSession): session object used for database operations
+            user (UserORM): user object of authenticated user
+
+        Returns:
+            JSONResponse with 404 status code if user not found
+            JSONResponse with 403 status code if user is not admin
+            JSONResponse with 200 status code if user banned
+    """
+    stmnt = select(UserORM).filter(UserORM.username == username)
+    db_res = await db.execute(stmnt)
+    db_user = db_res.scalars().first()
+
+    if db_user is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"User with username {username} not found."
+            }
+        )
+
+    db_user.is_banned = False
+    await db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "detail": f"User {username} unbanned."
         }
     )

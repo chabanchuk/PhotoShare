@@ -66,6 +66,7 @@ class UserORM(Base):
     # password contains hashed password
     password: Mapped[str] = mapped_column(nullable=False)
     loggedin: Mapped[bool] = mapped_column(default=False)
+    is_banned: Mapped[bool] = mapped_column(default=False)
     # email_confirmed: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
     profile: Mapped["ProfileORM"] = relationship(back_populates="user")
