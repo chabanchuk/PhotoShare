@@ -170,7 +170,7 @@ async def logout(
             token, user_orm.email, user_orm.username, db
         )
     except Exception as e:
-        if re.search("unique constraint", str(e), re.I):
+        if re.search(r"unique constraint", str(e), re.I):
            print("Token already blacklisted")
 
     user_orm.loggedin = False
