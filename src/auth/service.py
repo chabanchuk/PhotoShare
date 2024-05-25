@@ -172,6 +172,12 @@ class Authentication:
             HTTPException: If the token is invalid, the token scope is invalid, the token is expired,
                 or the user is not logged in.
         """
+        is_blacklisted = await self.is_blacklisted_token(token, db)
+        if is_blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is blacklisted"
+            )
+
         key = (
             self.SECRET_256
             if scope in ["access_token", "email_token"]
@@ -302,7 +308,7 @@ class Authentication:
         token: str,
         email: str,
         username: str,
-        db: AsyncSession,
+        db: Annotated[AsyncSession, Depends(get_db)]
     ):
         """
         Adds a token to the blacklist.
@@ -336,8 +342,9 @@ class Authentication:
         db.add(blacklist)
         await db.commit()
 
-    @staticmethod
-    async def is_blacklisted_token(token: str, db: AsyncSession) -> bool:
+    async def is_blacklisted_token(self,
+                                   token: str,
+                                   db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
         """
         Check if a given token is blacklisted.
 
@@ -359,15 +366,12 @@ class Authentication:
         blacklist = blacklist.scalars().first()
 
         if blacklist:
-            if blacklist.expire_access < datetime.utcnow():
-                await db.delete(blacklist)
-                await db.commit()
-                return False
             return True
         return False
 
-    @staticmethod
-    async def get_blacklisted_tokens(username: str, db: AsyncSession) -> List:
+    async def get_blacklisted_tokens(self,
+                                     username: str,
+                                     db: AsyncSession) -> List:
         """
         Retrieves a list of blacklisted tokens associated with a given username.
 

@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from jose import jwt
@@ -83,8 +84,8 @@ async def login(
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
-                "details": [{"msg": f"User with username: {user.username} not found"}]
-            },
+                "detail": {"msg": f"User with username: {user.username} not found"}
+            }
         )
 
     if not auth_service.verify_password(user.password, user_db.password):
@@ -93,22 +94,14 @@ async def login(
             content={"details": [{"msg": "Invalid credentials"}]},
         )
 
-    blacklisted_tokens = await auth_service.get_blacklisted_tokens(user.username, db)
-    for blacklisted_token in blacklisted_tokens:
-        if (
-            blacklisted_token.token
-            == request.headers.get("Authorization").split(" ")[1]
-        ):
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"details": "Token is blacklisted"},
-            )
-
     access_token = auth_service.create_access_token(user_db.email)
     refresh_token = auth_service.create_refresh_token(user_db.email)
     email_token = auth_service.create_email_token(user_db.email)
+
     user_db.loggedin = True
+
     await db.commit()
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
@@ -167,28 +160,25 @@ async def logout(
     user_orm: Annotated[UserORM, Depends(auth_service.get_access_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Any:
+    if not user_orm:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
     try:
-        if not user_orm:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-
-        user_orm.loggedin = False
-
         await auth_service.add_to_blacklist(
             token, user_orm.email, user_orm.username, db
         )
-        await db.commit()
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "details": "User logged out"
-            }
-        )
-
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {e}",
-        )
+        if re.search("unique constraint", str(e), re.I):
+           print("Token already blacklisted")
+
+    user_orm.loggedin = False
+    await db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "details": "User logged out"
+        }
+    )
