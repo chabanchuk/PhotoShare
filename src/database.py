@@ -32,6 +32,7 @@ class DatabaseSessionManager:
         except Exception as err:
             print(err)
             await session.rollback()
+            raise
         finally:
             await session.close()
 
@@ -46,4 +47,4 @@ async def get_db():
         except Exception as err:
             print(err)
             await session.rollback()
-
+            raise

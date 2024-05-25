@@ -10,6 +10,7 @@ from comment.orm import CommentORM
 from photo.orm import PhotoORM
 from userprofile.orm import ProfileORM, UserORM
 from auth.service import Authentication
+from auth.require_role import require_role
 
 auth_service = Authentication()
 
@@ -175,8 +176,15 @@ async def update_comment(
     return CommentModel.from_orm(db_comment)
 
 
-@router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_comment(comment_id: int, db: AsyncSession = Depends(get_db), user: UserORM = Depends(auth_service.get_access_user)):
+@router.delete("/delete/{comment_id}")
+async def delete_comment(
+        comment_id: int,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[
+            UserORM,
+            Depends(require_role(["moderator", "admin"]))
+        ]
+) -> Any:
     """
     Delete a comment.
     - **comment_id**: ID of the comment to delete.

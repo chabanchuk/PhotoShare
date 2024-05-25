@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Annotated
+from typing import List, Optional, Annotated, Any
 import io
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form, Query
 # from requests import HTTPError
@@ -243,7 +243,7 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
     return [PhotoResponse.from_orm(photo) for photo in photos]
 
 
-@router.get("/{photo_id}", response_model=PhotoResponse)
+@router.get("/{photo_id: int}", response_model=PhotoResponse)
 async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
     """
         Retrieves a single photo by its ID, including its comments and tags.
@@ -267,11 +267,10 @@ async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
     return PhotoResponse.from_orm(db_photo)
 
 
-@router.get("/{tag_name}", response_model=List[PhotoResponse])
+@router.get("/tag/{tag_name: str}", response_model=List[PhotoResponse])
 async def get_photos_by_tag(
     tag_name: str,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[UserORM, Depends(auth_service.get_access_user)]
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """
     Get all photos associated with a tag.
@@ -281,7 +280,6 @@ async def get_photos_by_tag(
     Args:
         tag_name (str): The name of the tag.
         db (AsyncSession): The database session.
-        user (UserORM): The authenticated user.
 
     Returns:
         List[PhotoResponse]: A list of photos associated with the tag.
@@ -296,8 +294,12 @@ async def get_photos_by_tag(
     return [PhotoResponse.from_orm(photo) for photo in photos]
 
 
-@router.get("/{author_fullname}", response_model=List[PhotoResponse])
-async def get_photos_by_author(author_username: str, db: AsyncSession = Depends(get_db)):
+@router.get("/user/{author_username: str}",
+            response_model=List[PhotoResponse])
+async def get_photos_by_author(
+        author_username: str,
+        db: Annotated[AsyncSession, Depends(get_db)]
+) -> Any:
     """
         Retrieves a list of photos by the author's username, including their comments and tags.
 
@@ -311,18 +313,22 @@ async def get_photos_by_author(author_username: str, db: AsyncSession = Depends(
         Raises:
             HTTPException: If the user or profile is not found.
     """
-    query1 = select(UserORM).filter_by(username=author_username)
+    query1 = select(UserORM).where(UserORM.username == author_username)
     result = await db.execute(query1)
     user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": f"User with username: {author_username} not found"}
+        )
     query2 = select(ProfileORM).filter_by(user_id=user.id)
     result = await db.execute(query2)
     profile = result.scalars().first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    query = select(PhotoORM).filter_by(author_fk=profile.id)\
-        .options(selectinload(PhotoORM.comments), selectinload(PhotoORM.tags))
+    query = select(PhotoORM).where(PhotoORM.author_fk == profile.id)\
+        .options(selectinload(PhotoORM.comments),
+                 selectinload(PhotoORM.tags))
     result = await db.execute(query)
     photos = result.scalars().all()
     return [PhotoResponse.from_orm(photo) for photo in photos]

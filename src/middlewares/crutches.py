@@ -3,14 +3,62 @@ Module provides necessary functions to compensate absence of JS skill
 Because we do want to have a nice frontend without heavy React or other
 js based framework with all these webpacks, nmps and so on
 """
+import copy
 import json
 import re
+import urllib.parse
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, Response
 
 from middlewares import response_handlers
 from middlewares.registrator import RESPONSE_MODDERS
+
+
+# class EncodedToJSON:
+#     def __init__(self, app):
+#         self.app = app
+#
+#     async def __call__(self, scope, receive, send):
+#         if scope["type"] != "http":
+#             await self.app(scope, receive, send)
+#             return
+#
+#         is_appropriate = False
+#         cl_ind = None
+#         for ind, header_pair in enumerate(scope.get('headers')):
+#             if all((header_pair[0].decode().lower() == 'content-type',
+#                     header_pair[1].decode().lower()
+#                     == 'application/x-www-form-urlencoded')):
+#                 scope['headers'][ind] = (b'content-type',
+#                                          b'application/json')
+#                 is_appropriate = True
+#             if header_pair[0].decode().lower() == 'content-length':
+#                 cl_ind = ind
+#
+#         if not is_appropriate:
+#             await self.app(scope, receive, send)
+#             return
+#
+#         async def modify_body():
+#             nonlocal scope, cl_ind
+#
+#             message = await receive()
+#             assert message["type"] == "http.request"
+#
+#             body: bytes = message.get("body", b"")
+#             body: str = body.decode()
+#             data = urllib.parse.unquote(body)
+#             data = urllib.parse.parse_qsl(data)
+#             data = dict((key, value) for (key, value) in data)
+#
+#             message["body"] = json.dumps(data).encode()
+#             print(len(message))
+#             scope['headers'][cl_ind] = (b'content-length',
+#                                         len(message['body']))
+#             return message
+#
+#         await self.app(scope, modify_body, send)
 
 
 async def cookie_to_header_jwt(request: Request,
@@ -42,7 +90,8 @@ async def modify_json_response(request: Request,
     try:
         response = await call_next(request)
     except Exception as e:
-        print(e)
+        print(request.scope['endpoint'].__name__)
+
         response = JSONResponse(
             status_code=500,
             content={
