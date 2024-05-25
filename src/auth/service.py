@@ -22,7 +22,7 @@ class Authentication:
     REFRESH_ALGORITHM = settings.refresh_algorithm
     SECRET_256 = settings.secret_256
     SECRET_512 = settings.secret_512
-    REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_exp
+    REFRESH_EXP = settings.refresh_exp
     oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="/auth/login")
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
@@ -212,9 +212,9 @@ class Authentication:
                 detail="Username not found in token",
             )
 
-        user = await db.execute(select(UserORM).filter(UserORM.email == email))
-        user = user.scalars().first()
-        if user is None:
+        db_res = await db.execute(select(UserORM).where(UserORM.email == email))
+        db_user = db_res.scalars().first()
+        if db_user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
             )
@@ -226,25 +226,25 @@ class Authentication:
                 <= int(datetime.timestamp(datetime.now(timezone.utc))),
             ]
         ):
-            user.loggedin = False
+            db_user.loggedin = False
             await db.commit()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token expired. Use /auth/login to get new tokens",
             )
 
-        if user.is_banned:
+        if db_user.is_banned:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="User is banned."
             )
 
-        if user.loggedin:
-            return user
+        if not db_user.loggedin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not logged in. Use /auth/login"
+            )
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not logged in. Use /auth/login",
-        )
+        return db_user
 
     async def get_access_user(
         self,
@@ -302,7 +302,6 @@ class Authentication:
         token: str,
         email: str,
         username: str,
-        expires_delta: float,
         db: AsyncSession,
     ):
         """
@@ -324,7 +323,7 @@ class Authentication:
         payload = jwt.decode(token, self.SECRET_256, algorithms=[self.ACCESS_ALGORITHM])
         issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
         expire_access = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-        expire_refresh = issued_at + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+        expire_refresh = issued_at + timedelta(days=int(self.REFRESH_EXP))
 
         blacklist = BlackListORM(
             email=email,
@@ -337,7 +336,8 @@ class Authentication:
         db.add(blacklist)
         await db.commit()
 
-    async def is_blacklisted_token(self, token: str, db: AsyncSession) -> bool:
+    @staticmethod
+    async def is_blacklisted_token(token: str, db: AsyncSession) -> bool:
         """
         Check if a given token is blacklisted.
 
@@ -366,7 +366,8 @@ class Authentication:
             return True
         return False
 
-    async def get_blacklisted_tokens(self, username: str, db: AsyncSession) -> List:
+    @staticmethod
+    async def get_blacklisted_tokens(username: str, db: AsyncSession) -> List:
         """
         Retrieves a list of blacklisted tokens associated with a given username.
 

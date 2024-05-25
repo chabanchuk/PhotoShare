@@ -147,8 +147,9 @@ async def refresh(
                 content={"details": "Token is blacklisted"},
             )
 
-    access_token = await auth_service.create_access_token(user.email)
-    email_token = await auth_service.create_email_token(user.email)
+    access_token = auth_service.create_access_token(user.email)
+    email_token = auth_service.create_email_token(user.email)
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
@@ -174,17 +175,18 @@ async def logout(
 
         user_orm.loggedin = False
 
-        payload = jwt.decode(
-            token, auth_service.SECRET_256, algorithms=[auth_service.ACCESS_ALGORITHM]
-        )
-        expires_delta = payload["exp"] - payload["iat"]
-
         await auth_service.add_to_blacklist(
-            token, user_orm.email, user_orm.username, expires_delta, db
+            token, user_orm.email, user_orm.username, db
         )
         await db.commit()
 
-        return {"details": "User logged out"}
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "details": "User logged out"
+            }
+        )
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

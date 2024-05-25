@@ -99,7 +99,7 @@ class BlackListORM(Base):
     __tablename__ = "blacklist"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str]
-    email: Mapped[Optional[str]] = mapped_column(String(80), unique=True)
+    email: Mapped[Optional[str]]
     token: Mapped[str] = mapped_column(unique=True)
     expire_access: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expire_refresh: Mapped[datetime] = mapped_column(DateTime(timezone=True))
