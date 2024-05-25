@@ -233,7 +233,12 @@ class Authentication:
                 detail="Token expired. Use /auth/login to get new tokens",
             )
 
-        if UserORM.loggedin:
+        if user.is_banned:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="User is banned."
+            )
+
+        if user.loggedin:
             return user
 
         raise HTTPException(
@@ -317,8 +322,8 @@ class Authentication:
             None
         """
         payload = jwt.decode(token, self.SECRET_256, algorithms=[self.ACCESS_ALGORITHM])
-        issued_at = datetime.utcfromtimestamp(payload["iat"])
-        expire_access = datetime.utcnow() + timedelta(seconds=expires_delta)
+        issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+        expire_access = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
         expire_refresh = issued_at + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
 
         blacklist = BlackListORM(
