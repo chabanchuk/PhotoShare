@@ -9,11 +9,9 @@ from sqlalchemy.orm import sessionmaker
 from main import app
 
 from database import Base, get_db
-from auth.service import Authentication
+from auth.service import Authentication as auth_service
 import logging
 
-
-auth_service = Authentication()
 
 logging.basicConfig(filename='debug.log', level=logging.DEBUG)
 
@@ -37,10 +35,8 @@ def session():
     logging.info(f"Database tables: {Base.metadata.tables}")
     db = TestingSession()
     try:
-        logging.debug(f"session yield: {db}")
         yield db
     finally:
-        logging.debug(f"session close: {db}")
         db.close()
 
 
@@ -49,12 +45,10 @@ def client(session):
     # Dependency override
     def override_get_db():
         try:
-            logging.debug(f"session yield: {session}")
             yield session
         except Exception as e:
             logging.error(f"session error: {e}")
         finally:
-            logging.debug(f"session close: {session}")
             session.close()
 
     app.dependency_overrides[get_db] = override_get_db
@@ -64,18 +58,19 @@ def client(session):
 @pytest.fixture(scope='module')
 def user():
     return {
-        "fullname": "Luk Skywoker",
+        "username": "duke_nukem",
         "email": "djedai@tatuin.emp",
-        "hashed_pwd": "May_the_4th",
+        "password": "May_the_4th",
         "id": 1,
         "loggedin": True,
-        "email_confirmed": True,
-        "avatar_url": "cloudinary_url"
+        "is_banned": False,
+        "role": "admin"
     }
 
 
 @pytest.fixture(scope='module')
 def get_access_token():
+    print("step: get_access_token")
     return auth_service.create_access_token(
         auth_service,
         email="djedai@tatuin.emp"
