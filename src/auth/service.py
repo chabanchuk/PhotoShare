@@ -4,7 +4,7 @@ from typing import Any, TypeAlias, Literal, Annotated, List
 from jose import jwt, JWTError
 import bcrypt
 from fastapi import security, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -54,12 +54,16 @@ class Authentication:
             password=plain_password.encode(), salt=self.HASH_SERVICE.gensalt()
         ).decode()
 
-    def create_token(self, email: str, scope: Scope, live_time: timedelta) -> str:
+    def create_token(self,
+                     sub: str,
+                     iat: datetime,
+                     scope: Scope,
+                     live_time: timedelta) -> str:
         """
         Creates a JWT token with the given email, scope, and live time.
 
         Args:
-            email (str): The email associated with the token.
+            sub (str): The email associated with the token.
             scope (Scope): The scope of the token.
             live_time (timedelta): The duration the token is valid.
 
@@ -78,8 +82,7 @@ class Authentication:
             6. Encode the payload into a JWT token using the key and algorithm.
             7. Return the generated JWT token.
         """
-        current_time = datetime.now(timezone.utc)
-        expiration_time = current_time + live_time
+        expiration_time = iat + live_time
 
         key = (
             self.SECRET_256
@@ -94,8 +97,8 @@ class Authentication:
         )
 
         payload = {
-            "sub": email,
-            "iat": current_time,
+            "sub": sub,
+            "iat": iat,
             "exp": expiration_time,
             "scope": scope,
         }
@@ -105,51 +108,71 @@ class Authentication:
         return jwt_token
 
     def create_access_token(
-        self, email: str, live_time: timedelta = timedelta(days=1)
+        self,
+        sub: str,
+        iat: datetime,
+        live_time: timedelta = timedelta(days=1)
     ) -> Any:
         """
         Creates an access token with the given email and optional live time.
 
         Args:
-            email (str): The email associated with the access token.
+            sub (str): The email associated with the access token.
             live_time (timedelta, optional): The duration the access token is valid. Defaults to 1 day.
 
         Returns:
             Any: The generated access token.
         """
-        return self.create_token(email=email, live_time=live_time, scope="access_token")
+        return self.create_token(
+            sub=sub,
+            iat=iat,
+            live_time=live_time,
+            scope="access_token")
 
     def create_refresh_token(
-        self, email: str, live_time: timedelta = timedelta(days=7)
+            self,
+            sub: str,
+            iat: datetime,
+            live_time: timedelta = timedelta(days=int(settings.refresh_exp))
     ) -> Any:
         """
         Creates a refresh token with the given email and optional live time.
 
         Args:
-            email (str): The email associated with the refresh token.
+            sub (str): The email associated with the refresh token.
             live_time (timedelta, optional): The duration the refresh token is valid. Defaults to 7 days.
 
         Returns:
             Any: The generated refresh token.
         """
         return self.create_token(
-            email=email, live_time=live_time, scope="refresh_token"
+            sub=sub,
+            iat=iat,
+            live_time=live_time,
+            scope="refresh_token"
         )
 
     def create_email_token(
-        self, email: str, live_time: timedelta = timedelta(hours=12)
+            self,
+            sub: str,
+            iat: datetime,
+            live_time: timedelta = timedelta(hours=12)
     ) -> Any:
         """
         Creates an email token with the given email and optional live time.
 
         Args:
-            email (str): The email associated with the email token.
+            sub (str): The email associated with the email token.
             live_time (timedelta, optional): The duration the email token is valid. Defaults to 12 hours.
 
         Returns:
             Any: The generated email token.
         """
-        return self.create_token(email=email, live_time=live_time, scope="email_token")
+        return self.create_token(
+            sub=sub,
+            iat=iat,
+            live_time=live_time,
+            scope="email_token")
 
     async def get_user(
         self,
@@ -342,9 +365,10 @@ class Authentication:
         db.add(blacklist)
         await db.commit()
 
-    async def is_blacklisted_token(self,
-                                   token: str,
-                                   db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
+    async def is_blacklisted_token(
+            self,
+            token: str,
+            db: Annotated[AsyncSession, Depends(get_db)]) -> bool:
         """
         Check if a given token is blacklisted.
 
@@ -360,6 +384,30 @@ class Authentication:
         blacklist table and False is returned. If the token is still valid, True is returned. If the token is not found
         in the blacklist table, False is returned.
         """
+        is_refresh = True
+        try:
+            payload = jwt.decode(token, self.SECRET_512, algorithms=[self.REFRESH_ALGORITHM])
+        except JWTError:
+            is_refresh = False
+
+        if is_refresh:
+            refresh_exp = payload.get('exp')
+            email = payload.get('sub')
+            if refresh_exp:
+                db_resp = await db.execute(
+                    select(BlackListORM)
+                    .where(
+                        and_(
+                            BlackListORM.expire_refresh == datetime.fromtimestamp(
+                                refresh_exp,
+                                tz=timezone.utc),
+                            BlackListORM.email == email)
+                    )
+                )
+                blacklist = db_resp.scalars().first()
+                if blacklist:
+                    return True
+
         blacklist = await db.execute(
             select(BlackListORM).filter(BlackListORM.token == token)
         )
@@ -369,9 +417,11 @@ class Authentication:
             return True
         return False
 
-    async def get_blacklisted_tokens(self,
-                                     username: str,
-                                     db: AsyncSession) -> List:
+    @staticmethod
+    async def get_blacklisted_tokens(
+            username: str,
+            db: AsyncSession
+    ) -> List:
         """
         Retrieves a list of blacklisted tokens associated with a given username.
 
@@ -385,7 +435,7 @@ class Authentication:
         blacklist_tokens = await db.execute(
             select(BlackListORM).filter(BlackListORM.username == username)
         )
-        return blacklist_tokens.scalars().all()
+        return [blacklist_tokens.scalars().all()]
 
 
 auth = Authentication()

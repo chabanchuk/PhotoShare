@@ -72,5 +72,5 @@ def user():
 def get_access_token():
     print("step: get_access_token")
     return auth_service.create_access_token(
-        email="djedai@tatuin.emp"
+        sub="djedai@tatuin.emp"
     )

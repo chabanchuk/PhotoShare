@@ -15,7 +15,7 @@ from userprofile.model import (UserPublicProfileModel,
                                UserProfileModel,
                                UserEditableProfileModel)
 
-from userprofile.orm import ProfileORM, UserORM
+from userprofile.orm import ProfileORM, UserORM, Role
 
 import utils.model_utilities as model_util
 
@@ -611,7 +611,7 @@ async def delete_profile(
 async def ban_user(
         username: str,
         db: Annotated[AsyncSession, Depends(get_db)],
-        user: Annotated[UserORM, Depends(require_role(["admin"]))]  # noqa: F821
+        user: Annotated[UserORM, Depends(require_role(["admin"]))]
 ) -> Any:
     """
     Ban user by username
@@ -635,6 +635,14 @@ async def ban_user(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
                 "detail": f"User with username {username} not found."
+            }
+        )
+
+    if db_user.username == user.username:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": "You can't ban yourself."
             }
         )
 
@@ -687,5 +695,57 @@ async def ban_user(
         status_code=status.HTTP_200_OK,
         content={
             "detail": f"User {username} unbanned."
+        }
+    )
+
+
+@router.patch("/{username: str}/grant-role/{role: Role}")
+async def grant_role(
+        username: str,
+        role: Role,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        user: Annotated[UserORM, Depends(require_role(["admin"]))]   # noqa: F821
+) -> Any:
+    """
+    Grant role to user by username
+
+        Args:
+            username (str): username of user to grant role
+            role (Role): role to grant
+            db (AsyncSession): session object used for database operations
+            user (UserORM): user object of authenticated user
+
+        Returns:
+            JSONResponse with 404 status code if user not found
+            JSONResponse with 403 status code if user is not admin
+            JSONResponse with 200 status code if role granted
+    """
+    stmnt = select(UserORM).filter(UserORM.username == username)
+    db_res = await db.execute(stmnt)
+    db_user = db_res.scalars().first()
+
+    if db_user is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"User with username {username} not found."
+            }
+        )
+
+    if db_user.username == user.username:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": "You can't change your role."
+            }
+        )
+
+    db_user.role = role
+    await db.commit()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "detail": f"Role {role} granted to user {username}."
         }
     )

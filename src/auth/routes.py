@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from jose import jwt
 from sqlalchemy import select, or_
@@ -93,10 +93,13 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"details": [{"msg": "Invalid credentials"}]},
         )
-
-    access_token = auth_service.create_access_token(user_db.email)
-    refresh_token = auth_service.create_refresh_token(user_db.email)
-    email_token = auth_service.create_email_token(user_db.email)
+    iat = datetime.now(timezone.utc)
+    access_token = auth_service.create_access_token(sub=user_db.email,
+                                                    iat=iat)
+    refresh_token = auth_service.create_refresh_token(sub=user_db.email,
+                                                      iat=iat)
+    email_token = auth_service.create_email_token(sub=user_db.email,
+                                                  iat=iat)
 
     user_db.loggedin = True
 

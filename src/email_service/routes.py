@@ -60,7 +60,7 @@ async def send_confirmation(
             }
         )
 
-    token = await auth_service.create_email_token(email=email.email,
+    token = await auth_service.create_email_token(sub=email.email,
                                                   live_time=timedelta(hours=12))
     token_url = router.url_path_for('confirm_email',
                                     token=token)
