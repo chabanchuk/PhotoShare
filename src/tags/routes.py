@@ -75,16 +75,16 @@ async def read_tag(
 @router.put("/{tag: str}", response_model=TagModel)
 async def update_tag(
     tag: str,
-    tag: TagCreate,
+    new_tag: TagCreate,
     db: AsyncSession = Depends(get_db),
     current_user: UserORM = Depends(require_role(["moderator", "admin"]))
 ):
-    result = await db.execute(select(TagORM).filter(TagORM.tag == tag))
+    result = await db.execute(select(TagORM).filter(TagORM.tag == new_tag.tag))
     db_tag = result.scalars().first()
     if db_tag is None:
         raise HTTPException(status_code=404, detail="Tag not found")
     
-    db_tag.name = tag.name
+    db_tag.name = new_tag.tag
     await db.commit()
     await db.refresh(db_tag)
     return TagModel.from_orm(db_tag)
