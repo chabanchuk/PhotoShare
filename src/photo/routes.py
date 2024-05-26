@@ -248,10 +248,23 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
         Returns:
             List[PhotoResponse]: A list of photo details, limited by the `limit` and offset by the `offset`.
         """
-    query = select(PhotoORM).offset(offset).limit(limit)
+    query = select(PhotoORM).offset(offset).limit(limit).options(
+        selectinload(PhotoORM.comments),
+        selectinload(PhotoORM.tags),
+        selectinload(PhotoORM.author),
+        selectinload(PhotoORM.author).selectinload(ProfileORM.user)
+    )
     result = await db.execute(query)
     photos = result.scalars().all()
-    return [PhotoResponse.from_orm(photo) for photo in photos]
+    return_list = []
+    for photo in photos:
+        _ = PhotoResponse.from_orm(photo)
+        _.comments_num = len(photo.comments)
+        _.tags = [tag.name for tag in photo.tags]
+        _.author = photo.author.user.username
+        return_list.append(_)
+
+    return return_list
 
 
 @router.get("/{photo_id: int}", response_model=PhotoResponse)

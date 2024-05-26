@@ -120,8 +120,9 @@ async def html_get_photos(request: Request,
                 HTML data for htmx
     """
     if len(data) == 0:
-        return templates.TemplateResponse('photos.html',
+        return templates.TemplateResponse('photo/photo_list.html',
                                           {'request': request,
                                            'photo_list': None})
-    print(data)
-    return response
+    return templates.TemplateResponse('photo/photo_list.html',
+                                      {'request': request,
+                                       'photo_list': data})

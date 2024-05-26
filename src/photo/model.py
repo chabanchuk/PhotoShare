@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 from pydantic import BaseModel, ConfigDict, Field
 #from comment.model import CommentModel
 #from tags.model import TagModel
@@ -30,11 +30,12 @@ class PhotoUpdate(BaseModel):
 
 class PhotoResponse(PhotoModel):
     id: int
+    author: Any
     url: str
     author_fk: int
     public_id: str
     qrcode_url: Optional[str]
     comments_num: int = Field(ge=0, default=0)
-    tags_num: int = Field(ge=0, default=0)
+    tags: list[Any] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
