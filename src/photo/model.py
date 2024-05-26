@@ -34,7 +34,7 @@ class PhotoResponse(PhotoModel):
     author_fk: int
     public_id: str
     qrcode_url: Optional[str]
-    # comments_num: int = Field(ge=0, default=0)
-    # tags_num: int = Field(ge=0, default=0)
+    comments_num: int = Field(ge=0, default=0)
+    tags_num: int = Field(ge=0, default=0)
 
     model_config = ConfigDict(from_attributes=True)
