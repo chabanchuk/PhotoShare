@@ -117,7 +117,8 @@ class Authentication:
         Creates an access token with the given email and optional live time.
 
         Args:
-            sub (str): The email associated with the access token.
+            sub (str): The sub field of the access token.
+            iat (datetime): The time to set to iat field.
             live_time (timedelta, optional): The duration the access token is valid. Defaults to 1 day.
 
         Returns:
@@ -140,6 +141,7 @@ class Authentication:
 
         Args:
             sub (str): The email associated with the refresh token.
+            iat (datetime): The time to set to iat field.
             live_time (timedelta, optional): The duration the refresh token is valid. Defaults to 7 days.
 
         Returns:
@@ -163,6 +165,7 @@ class Authentication:
 
         Args:
             sub (str): The email associated with the email token.
+            iat (datetime): The time to set to iat field.
             live_time (timedelta, optional): The duration the email token is valid. Defaults to 12 hours.
 
         Returns:
@@ -217,7 +220,7 @@ class Authentication:
                 token=token,
                 key=key,
                 algorithms=[algorithm],
-                options={"verify_exp": False},
+                # options={"verify_exp": False},
             )
         except JWTError as e:
             raise HTTPException(

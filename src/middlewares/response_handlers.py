@@ -11,7 +11,6 @@ from frontend.routes import templates
 from settings import settings
 
 
-
 @register_modder('get_my_profile')
 async def html_get_my_profile(request: Request,
                               response: Response,
@@ -43,10 +42,6 @@ async def html_auth_login(request: Request,
             Returns:
                 HTML data for htmx
     """
-    # {'access_token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcGx1QGRlaG9jaGh1LmNvbSIsImlhdCI6MTcxNjcwODEyMSwiZXhwIjoxNzE2Nzk0NTIxLCJzY29wZSI6ImFjY2Vzc190b2tlbiJ9.BzxcdN_KSJf_wofbfL91ingrDqsgeEdy4Hf4bbg1ptA',
-    # 'refresh_token': 'eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcGx1QGRlaG9jaGh1LmNvbSIsImlhdCI6MTcxNjcwODEyMSwiZXhwIjoxNzE3MzEyOTIxLCJzY29wZSI6InJlZnJlc2hfdG9rZW4ifQ.CEiUEu63S8o7BCHI12R-bYSaPmhC7-b2vdhMv7RkbQ-YPzQQwbGUpXjvCGCdZYIgrCuSAyNlSCELMJ3MMW2g-A',
-    # 'email_token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcGx1QGRlaG9jaGh1LmNvbSIsImlhdCI6MTcxNjcwODEyMSwiZXhwIjoxNzE2NzUxMzIxLCJzY29wZSI6ImVtYWlsX3Rva2VuIn0.JdCf4LwSxJjIFM7PQgl7aCT0rCw1Cv2QGehFWCcR_Ks',
-    # 'token_type': 'bearer'}
     status_code = response.status_code
     if status_code >= 400:
         error_message = data.get('detail').get('msg')
@@ -73,7 +68,8 @@ async def html_auth_login(request: Request,
     except jose.exceptions.JWTError:
         return templates.TemplateResponse(
             'auth/login.html', {'request': request,
-                                'error': 'Invalid credentials'}
+                                'error': 'Invalid credentials',
+                                'user': None}
         )
 
     response = RedirectResponse('/',
@@ -86,4 +82,41 @@ async def html_auth_login(request: Request,
                         value=refresh_token,
                         httponly=True,
                         expires=refresh_payload.get('exp'))
+    return response
+
+
+@register_modder('auth_logout')
+async def html_auth_logout(request: Request,
+                           response: Response,
+                           data: dict) -> Any:
+    """HTMX transformer for auth_logout response
+
+            Args:
+                request (Request): request object to handle
+                response (Response): response object to handle
+                data (dict): mapped response data
+
+            Returns:
+                HTML data for htmx
+    """
+    response = RedirectResponse('/',
+                                status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie('access_token')
+    response.delete_cookie('refresh_token')
+    return response
+
+
+@register_modder('get_photos')
+async def html_get_photos(request: Request,
+                          response: Response,
+                          data: dict) -> Any:
+    """HTMX transformer for get_photos response
+
+            Args:
+                response (Response): response object to handle
+                data (dict): mapped response data
+
+            Returns:
+                HTML data for htmx
+    """
     return response

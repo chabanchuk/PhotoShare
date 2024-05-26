@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>REST API app index page</title>
     <link rel="stylesheet" href="{{ url_for ('static', path='bootstrap.min.css')}}">
+    <link rel="stylesheet" href="{{ url_for ('static', path='htmx.styles.css')}}">
     <script src="{{ url_for ('static', path='bootstrap.bundle.min.js')}}"></script>
     <script src="{{ url_for ('static', path='htmx.min.js')}}"></script>
 </head>
@@ -11,15 +12,24 @@
 <nav class="py-2 bg-body-secondary border-bottom">
     <div class="container d-flex flex-wrap">
       <ul class="nav me-auto">
-        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2 active" aria-current="page">Home</a></li>
-        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">Features</a></li>
-        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">Pricing</a></li>
-        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">FAQs</a></li>
-        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">About</a></li>
+        <li class="nav-item"><a href="{{ url_for('index') }}" class="nav-link link-body-emphasis px-2 active" aria-current="page">Home</a></li>
+        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">Photos</a></li>
+        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">Authors</a></li>
+          {% if user %}
+        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">My photos</a></li>
+        <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">My Comments</a></li>
+          {% if user.role in ['admin', 'moderator'] %}
+          <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">Moderation</a></li>
+          {% if user.role == 'admin' %}
+          <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">Administration</a></li>
+          {% endif %}
+          {% endif %}
+          {% endif %}
+          <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-4">About</a></li>
       </ul>
       <ul class="nav">
           {% if user %}
-        <li class="nav-item"><a href="{{ url_for('get_logout') }}" class="nav-link link-body-emphasis px-2">Logout</a></li>
+        <li class="nav-item"><a href="#" class="text-uppercase nav-link link-body-emphasis px-2">{{ user.username }}</a></li>
         <li class="nav-item"><a href="{{ url_for('auth_logout') }}" class="nav-link link-body-emphasis px-2">Logout</a></li>
           {% else %}
         <li class="nav-item"><a href="{{ url_for('get_login_page') }}" class="nav-link link-body-emphasis px-2">Login</a></li>
@@ -28,16 +38,6 @@
       </ul>
     </div>
   </nav>
-<header class="py-3 mb-4 border-bottom">
-    <div class="container d-flex flex-wrap justify-content-center">
-      <a href="/" class="d-flex align-items-center mb-3 mb-lg-0 me-lg-auto link-body-emphasis text-decoration-none">
-        <span class="fs-4">PhotoShare REST API GoIT team project app</span>
-      </a>
-      <form class="col-12 col-lg-auto mb-3 mb-lg-0" role="search">
-        <input type="search" class="form-control" placeholder="Search..." aria-label="Search">
-      </form>
-    </div>
-  </header>
     {% block content %}{% endblock %}
 <footer class="text-body-secondary py-5">
   <div class="container">

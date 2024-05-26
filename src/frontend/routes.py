@@ -40,6 +40,7 @@ def get_login_page(request: Request,
                    next_url: Optional[str] = None) -> Any:
     return templates.TemplateResponse(
         'auth/login.html', {'request': request,
+                            'user': None,
                             'error': None}
     )
 
