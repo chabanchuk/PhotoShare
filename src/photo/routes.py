@@ -78,9 +78,11 @@ async def create_photo(
         if not tag_exists:
             new_tag = TagORM(tag=tag)
             db.add(new_tag)
-            await db.commit()
-            await db.refresh(new_tag)
-
+            # await db.commit()
+            #
+            # from_db = await db.execute(select(TagORM).where(TagORM.tag == tag))
+            # from_db = from_db.scalars().first()
+            # tags_photo.append(from_db)
             tags_photo.append(new_tag)
         else:
             tags_photo.append(tag_exists)
