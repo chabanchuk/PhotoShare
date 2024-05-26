@@ -7,7 +7,7 @@ from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
@@ -30,8 +30,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
         201: {"model": UserDBModel},
     },
 )
-async def new_user(
-        user: UserRegisterModel,
+async def auth_register(
+        user: Annotated[UserRegisterModel, Form()],
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
     exists = await db.execute(
@@ -44,9 +44,8 @@ async def new_user(
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "details": [
+                "detail":
                     {"msg": "User with such email or username already registered"}
-                ]
             },
         )
 
@@ -78,7 +77,7 @@ async def new_user(
 
 
 @router.post("/login", response_model=TokenModel)
-async def login(
+async def auth_login(
     request: Request,
     user: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -124,7 +123,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenModel)
-async def refresh(
+async def auth_refresh(
     request: Request,
     user: Annotated[UserORM, Depends(auth_service.get_refresh_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -165,7 +164,7 @@ async def refresh(
 
 
 @router.get("/logout")
-async def logout(
+async def auth_logout(
     token: Annotated[str, Depends(auth_service.oauth2_schema)],
     user_orm: Annotated[UserORM, Depends(auth_service.get_access_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

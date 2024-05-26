@@ -1,6 +1,6 @@
 from typing import List, Annotated, Any, TypeAlias, Literal
 
-from fastapi import Depends, status
+from fastapi import Depends, status, Form
 from fastapi.routing import APIRouter
 from sqlalchemy import select, update, Column
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -170,8 +170,8 @@ async def get_my_profile(
                  422: {"detail": "Could not process empty data."},
                  201: {"model": UserProfileModel}
              })
-async def ceate_my_profile(
-        profile: UserEditableProfileModel,
+async def create_my_profile(
+        profile: Annotated[UserEditableProfileModel, Form()],
         user: Annotated[UserORM, Depends(auth_service.get_access_user)],
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
@@ -409,7 +409,7 @@ async def set_my_profile_field(
 @router.patch("/profile/me",
               response_model=UserProfileModel)
 async def patch_my_profile(
-        profile_data: UserEditableProfileModel,
+        profile_data: Annotated[UserEditableProfileModel, Form()],
         user: Annotated[UserORM, Depends(auth_service.get_access_user)],
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:

@@ -113,9 +113,10 @@ async def modify_json_response(request: Request,
         response_dict = json.loads(response_b)
         modder = RESPONSE_MODDERS.get(endpoint)
         if modder is not None:
-            return_response = modder(response=response,
-                                     data=response_dict)
-        print(response_b.decode())
+            return_response = await modder(
+                request=request,
+                response=response,
+                data=response_dict)
         return_response = Response(content=response_b,
                                    status_code=response.status_code,
                                    headers=dict(response.headers),

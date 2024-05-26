@@ -56,7 +56,7 @@ def client(session):
 
 
 @pytest.fixture(scope='module')
-def user():
+def user_admin():
     return {
         "username": "duke_nukem",
         "email": "djedai@tatuin.emp",
@@ -65,6 +65,32 @@ def user():
         "loggedin": True,
         "is_banned": False,
         "role": "admin"
+    }
+
+
+@pytest.fixture(scope='module')
+def user_moder():
+    return {
+        "username": "vlad_dracula",
+        "email": "blood@transilvania.tasty",
+        "password": "light_is_boo",
+        "id": 2,
+        "loggedin": True,
+        "is_banned": False,
+        "role": "moderator"
+    }
+
+
+@pytest.fixture(scope='module')
+def user():
+    return {
+        "username": "pes_patron",
+        "email": "havhav@town.in",
+        "password": "meat_n_bones",
+        "id": 3,
+        "loggedin": True,
+        "is_banned": False,
+        "role": "user"
     }
 
 
