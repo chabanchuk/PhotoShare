@@ -97,7 +97,7 @@ async def auth_login(
     if not auth_service.verify_password(user.password, user_db.password):
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"details": [{"msg": "Invalid credentials"}]},
+            content={"detail": {"msg": "Invalid credentials"}},
         )
     iat = datetime.now(timezone.utc)
     access_token = auth_service.create_access_token(sub=user_db.email,
