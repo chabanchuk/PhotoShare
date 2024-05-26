@@ -1,7 +1,14 @@
-
 from typing import List, Optional, Annotated, Any
 import io
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, APIRouter, status, Form, Query
+
+from fastapi import (Depends,
+                     HTTPException,
+                     UploadFile,
+                     File,
+                     APIRouter,
+                     status,
+                     Form,
+                     Query)
 # from requests import HTTPError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -12,10 +19,9 @@ from sqlalchemy.orm import selectinload
 from fastapi.responses import Response, JSONResponse
 import qrcode
 from database import get_db
-from photo.model import PhotoResponse, PhotoUpdate, PhotoModel, TransformRequest, PhotoCreateQR
+from photo.model import PhotoResponse, PhotoModel
 from photo.orm import PhotoORM
 from tags.orm import TagORM
-from userprofile.orm import ProfileORM, UserORM
 from settings import settings
 import qrcode.image.svg
 from userprofile.orm import ProfileORM, UserORM
@@ -45,14 +51,11 @@ async def get_profile(user_id: int, db: AsyncSession):
             Union[JSONResponse, ProfileORM]: If the profile is found, returns the profile.
             Otherwise, returns a JSONResponse with a 404 status code and a message "Profile not found".
     """
-    query = select(ProfileORM).filter_by(user_id=user_id)
+    query = select(ProfileORM).where(ProfileORM.user_id == user_id)
     result = await db.execute(query)
     profile = result.scalars().first()
     if profile is None:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Profile not found"}
-        )
+        raise HTTPException(status_code=404, detail="Profile not found")
     return profile
 
 
@@ -65,8 +68,8 @@ async def create_photo(
         description: str = Form(),
         file: UploadFile = File(),
         tags: Annotated[str | None, Form()] = None
-):
-
+) -> Any:
+    profile = await get_profile(user.id, db)
     tags_list = tags.split(' ') if tags else []
     tags_photo = []
     for tag in tags_list:
@@ -77,11 +80,11 @@ async def create_photo(
             db.add(new_tag)
             await db.commit()
             await db.refresh(new_tag)
+
             tags_photo.append(new_tag)
         else:
             tags_photo.append(tag_exists)
 
-    profile = await get_profile(user.id, db)
     max_file_size = 3 * 1024 * 1024  # 3 megabytes
     file_content = await file.read()
     file_size = len(file_content)
@@ -89,7 +92,10 @@ async def create_photo(
         raise HTTPException(status_code=413,
                             detail="File size exceeds the limit of 3 megabytes")
     await file.seek(0)
-    cloudinary_result = upload(file.file, folder="photos/")
+    try:
+        cloudinary_result = upload(file.file, folder=settings.cloudinary_folder)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
     photo = PhotoModel(description=description)
     db_photo = PhotoORM(url=cloudinary_result['secure_url'],
                         public_id=cloudinary_result['public_id'],
@@ -99,7 +105,27 @@ async def create_photo(
     db.add(db_photo)
     await db.commit()
     await db.refresh(db_photo)
-    return PhotoResponse.from_orm(db_photo)
+
+    stmnt = (
+        select(PhotoORM)
+        .where(PhotoORM.public_id == db_photo.public_id)
+        .options(
+            selectinload(PhotoORM.tags),
+            selectinload(PhotoORM.author),
+            selectinload(PhotoORM.author).selectinload(ProfileORM.user),
+            selectinload(PhotoORM.comments))
+    )
+
+    db_resp = await db.execute(stmnt)
+    db_photo = db_resp.scalars().first()
+
+    ret_photo = PhotoResponse.from_orm(db_photo)
+    ret_photo.comments_num = len(db_photo.comments)
+    ret_photo.tags = [tag.tag for tag in db_photo.tags]
+    ret_photo.author = db_photo.author.user.username
+    print(ret_photo)
+
+    return ret_photo
 
 
 @router.post("/{transform}", response_model=PhotoResponse, status_code=status.HTTP_200_OK)
@@ -205,7 +231,7 @@ async def add_tags_to_photo(
     # Check the current number of tags and limit to 5
     if len(photo.tags) + len(tag_names) > 5:
         raise HTTPException(status_code=400, detail="Adding these tags would exceed the limit of 5 tags per photo")
-    tags_to_add = await db.scalars(select(TagORM).where(TagORM.name.in_(tag_names)))
+    tags_to_add = await db.scalars(select(TagORM).where(TagORM.tag.in_(tag_names)))
     tags_to_add = tags_to_add.all()
     photo.tags.extend(tags_to_add)
     await db.commit()
@@ -266,11 +292,13 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
         Returns:
             List[PhotoResponse]: A list of photo details, limited by the `limit` and offset by the `offset`.
         """
-    query = select(PhotoORM).offset(offset).limit(limit).options(
-        selectinload(PhotoORM.comments),
-        selectinload(PhotoORM.tags),
-        selectinload(PhotoORM.author),
-        selectinload(PhotoORM.author).selectinload(ProfileORM.user)
+    query = (
+        select(PhotoORM).offset(offset).limit(limit).order_by(PhotoORM.id.desc())
+        .options(
+            selectinload(PhotoORM.comments),
+            selectinload(PhotoORM.tags),
+            selectinload(PhotoORM.author),
+            selectinload(PhotoORM.author).selectinload(ProfileORM.user))
     )
     result = await db.execute(query)
     photos = result.scalars().all()
@@ -278,7 +306,7 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
     for photo in photos:
         _ = PhotoResponse.from_orm(photo)
         _.comments_num = len(photo.comments)
-        _.tags = [tag.name for tag in photo.tags]
+        _.tags = [tag.tag for tag in photo.tags]
         _.author = photo.author.user.username
         return_list.append(_)
 
@@ -329,7 +357,7 @@ async def get_photos_by_tag(
     Raises:
         HTTPException: If the tag is not found.
     """
-    tag = await db.scalar(select(TagORM).where(TagORM.name == tag_name))
+    tag = await db.scalar(select(TagORM).where(TagORM.tag == tag_name))
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     photos = tag.photos

@@ -27,6 +27,7 @@ class EnvSettings(BaseSettings):
     cloudinary_api_key: str
     cloudinary_api_secret: str
     refresh_exp: str
+    cloudinary_folder: str
 
 
 # production environment

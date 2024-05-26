@@ -6,13 +6,13 @@
                  width="100%" height="225"
                  src="{{ photo.url }}"
                  alt="{{ photo.description }}">
-            <div class="card-body">
-              <p class="card-text">{{ photo.description }}</p>
-                <p class="card-text">{{ photo.author }}</p>
-                <p class="card-text">Comments: {{ photo.comments_num }}</p>
+            <div class="card-body clear-fix">
+              <p class="card-text">Description: {{ photo.description }}</p>
+                <p class="card-text">Author: {{ photo.author }}
+                    <span class="px-4">Comments: {{ photo.comments_num }}</span></p>
                 <p class="card-text">Tags:
                     {% for tag in photo.tags %}
-                        <span class="badge badge-primary">{{ tag }}</span>
+                        <span>{{ tag }} </span>
                     {% endfor %}
                 </p>
               <div class="d-flex justify-content-between align-items-center">

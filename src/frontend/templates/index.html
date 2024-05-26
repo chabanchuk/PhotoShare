@@ -25,10 +25,11 @@
       </div>
     </div>
   </div>
-</main>
-{% if user %}
+  {% if user %}
 <div class="position-absolute top-1 end-0">
   <a href="/photos/add" class="btn-primary btn mx-5">Add photo</a>
 </div>
 {% endif %}
+</main>
+
 {% endblock %}

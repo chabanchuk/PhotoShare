@@ -126,3 +126,26 @@ async def html_get_photos(request: Request,
     return templates.TemplateResponse('photo/photo_list.html',
                                       {'request': request,
                                        'photo_list': data})
+
+
+@register_modder('create_photo')
+async def html_create_photo(request: Request,
+                            response: Response,
+                            data: dict) -> Any:
+    """HTMX transformer for create_photo response
+
+            Args:
+                response (Response): response object to handle
+                data (dict): mapped response data
+
+            Returns:
+                HTML data for htmx
+    """
+    if response.status_code >= 400:
+        error_message = data.get('detail').get('msg')
+        return templates.TemplateResponse(
+            'photo/photo_add.html', {'request': request,
+                                     'error': error_message}
+        )
+    return RedirectResponse('/',
+                            status_code=status.HTTP_303_SEE_OTHER)
