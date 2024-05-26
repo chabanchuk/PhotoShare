@@ -60,6 +60,36 @@ async def get_comment(
     return CommentModel.from_orm(db_comment)
 
 
+@router.get("/{photo_id}",
+            response_model=List[CommentModel])
+async def read_comments_about_photo(
+        db: AsyncSession = Depends(get_db),
+        skip: int = 0,
+        limit: int = 10,
+        photo_id: int = None):
+    """
+    Read a list of comments.
+    - **skip**: Number of records to skip for pagination.
+    - **limit**: Maximum number of records to return.
+    """
+    query = select(PhotoORM).filter_by(id=photo_id)
+    result = await db.execute(query)
+    db_photo = result.scalars().first()
+    if not db_photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    stmt = select(CommentORM).where(CommentORM.photo_fk == db_photo.id).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    comments = result.scalars().all()
+    if len(comments) == 0 :
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "detail": f"Comments to photo with id: {photo_id}  are not found."
+            }
+        )
+    return [CommentModel.from_orm(comment) for comment in comments]
+
+
 @router.post("/{photo_id}",
              response_model=CommentModel)
 async def create_comment(
