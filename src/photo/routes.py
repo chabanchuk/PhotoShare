@@ -56,15 +56,31 @@ async def get_profile(user_id: int, db: AsyncSession):
     return profile
 
 
-@router.post("/",
+@router.post("/add",
              response_model=PhotoResponse
              )
 async def create_photo(
         db: Annotated[AsyncSession, Depends(get_db)],
         user: Annotated[UserORM, Depends(auth_service.get_access_user)],
         description: str = Form(),
-        file: UploadFile = File()
+        file: UploadFile = File(),
+        tags: Annotated[str | None, Form()] = None
 ):
+
+    tags_list = tags.split(' ') if tags else []
+    tags_photo = []
+    for tag in tags_list:
+        tag_exists = await db.execute(select(TagORM).where(TagORM.tag == tag))
+        tag_exists = tag_exists.scalars().first()
+        if not tag_exists:
+            new_tag = TagORM(tag=tag)
+            db.add(new_tag)
+            await db.commit()
+            await db.refresh(new_tag)
+            tags_photo.append(new_tag)
+        else:
+            tags_photo.append(tag_exists)
+
     profile = await get_profile(user.id, db)
     max_file_size = 3 * 1024 * 1024  # 3 megabytes
     file_content = await file.read()
@@ -77,7 +93,9 @@ async def create_photo(
     photo = PhotoModel(description=description)
     db_photo = PhotoORM(url=cloudinary_result['secure_url'],
                         public_id=cloudinary_result['public_id'],
-                        description=photo.description, author_fk=profile.id)
+                        description=photo.description,
+                        author_fk=profile.id,
+                        tags=tags_photo)
     db.add(db_photo)
     await db.commit()
     await db.refresh(db_photo)

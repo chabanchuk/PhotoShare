@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-signin w-50 m-auto">
+    <form action="/photos/add" enctype="multipart/form-data" method="post">
+    <h1 class="h3 mb-3 fw-normal py-1">Add photo</h1>
+    <div class="mb-3">
+  <label for="photoSelect" class="form-label">Select photo to add...</label>
+  <input class="form-control" type="file" name="file" id="photoSelect" required>
+</div>
+ <div class="mb-3">
+  <label for="photoDescription" class="form-label">Description</label>
+  <textarea class="form-control" name="description" id="photoDescription" rows="3" required></textarea>
+</div>
+        <div class="form-floating py-2">
+      <input type="text" class="form-control" id="floatingInput" name="tags" placeholder="Tags">
+      <label for="floatingInput">Tags (5 maximum, space separated)</label>
+    </div>
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+        {{ error }}
+        </div>
+    {% endif %}
+    <div class="form-floating py-2 w-50 m-auto">
+    <button class="btn btn-primary w-100 py-2" type="submit">Add photo</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

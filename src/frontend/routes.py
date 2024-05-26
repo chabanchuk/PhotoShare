@@ -51,6 +51,20 @@ async def get_register_page(request: Request,
     return templates.TemplateResponse('auth/register.html', {'request': request})
 
 
-@router.get('/htmx-test')
-async def htmx_test(request: Request):
-    return HTMLResponse('<h1 hx-get="/htmx-test" hx-trigger="click" hx-swap="afterend">Hello from htmx</h1>')
+@router.get('/photos/add')
+async def get_add_photo_page(
+        request: Request,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        access_token: Annotated[str | None, Cookie()] = None,
+) -> Any:
+    user = None
+    if access_token:
+        user_orm = await auth_service.get_access_user(access_token,
+                                                      db)
+        user = UserFrontendModel.from_orm(user_orm)
+    if user is None:
+        return RedirectResponse('/auth/login')
+    return templates.TemplateResponse('photo/photo_add.html',
+                                      {'request': request,
+                                       'error': None,
+                                       'user': user})
