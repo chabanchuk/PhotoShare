@@ -117,6 +117,7 @@ async def modify_json_response(request: Request,
                 request=request,
                 response=response,
                 data=response_dict)
+            return return_response
         return_response = Response(content=response_b,
                                    status_code=response.status_code,
                                    headers=dict(response.headers),

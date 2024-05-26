@@ -11,6 +11,11 @@
       <input type="password" class="form-control" id="floatingPassword" name="password" placeholder="Password" required>
       <label for="floatingPassword">Password</label>
     </div>
+    {% if error %}
+        <div class="alert alert-danger" role="alert">
+        {{ error }}
+        </div>
+    {% endif %}
     <div class="form-floating py-2 w-50 m-auto">
     <button class="btn btn-primary w-100 py-2" type="submit">Sign in</button>
     </div>

@@ -18,8 +18,13 @@
         <li class="nav-item"><a href="#" class="nav-link link-body-emphasis px-2">About</a></li>
       </ul>
       <ul class="nav">
+          {% if user %}
+        <li class="nav-item"><a href="{{ url_for('get_logout') }}" class="nav-link link-body-emphasis px-2">Logout</a></li>
+        <li class="nav-item"><a href="{{ url_for('auth_logout') }}" class="nav-link link-body-emphasis px-2">Logout</a></li>
+          {% else %}
         <li class="nav-item"><a href="{{ url_for('get_login_page') }}" class="nav-link link-body-emphasis px-2">Login</a></li>
         <li class="nav-item"><a href="{{ url_for('get_register_page') }}" class="nav-link link-body-emphasis px-2">Sign up</a></li>
+        {% endif %}
       </ul>
     </div>
   </nav>

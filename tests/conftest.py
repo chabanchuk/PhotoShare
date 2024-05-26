@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -96,7 +97,8 @@ def user():
 
 @pytest.fixture(scope='module')
 def get_access_token():
-    print("step: get_access_token")
+    iat = datetime.now(timezone.utc)
     return auth_service.create_access_token(
-        sub="djedai@tatuin.emp"
+        sub="djedai@tatuin.emp",
+        iat=iat
     )
