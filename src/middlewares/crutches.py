@@ -36,9 +36,20 @@ async def modify_json_response(request: Request,
     docs_redoc_regexp = (r"/docs$|/docs#|/docs/|/redoc$|/redoc#|/redoc/"
                          + r"|/openapi.json$|/static/|/favicon.ico$")
 
-    swagger_static_match = re.search(pattern=docs_redoc_regexp,
-                                     string=str(request.url),
-                                     flags=re.I)
+    referer = request.headers.get('referer')
+
+    swagger_static_match = any(
+        (re.search(
+            pattern=docs_redoc_regexp,
+            string=str(request.url),
+            flags=re.I
+        ),
+         re.search(
+             pattern=docs_redoc_regexp,
+             string=referer,
+             flags=re.I)
+        )
+    )
 
     ua_string = request.headers.get('user-agent')
     browser_match = re.search(browser_regexp, ua_string)

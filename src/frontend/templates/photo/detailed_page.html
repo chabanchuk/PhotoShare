@@ -1,18 +1,33 @@
-{% extends "base.html%}
+{% extends "base.html" %}}
 {% block content %}
-<main>
-  <div class="album py-5 bg-body-tertiary">
-    <div class="container">
-     {% if error %}
-        {% else %}
-      <div hx-get="/photos/{{ photo_id }}"
-           hx-trigger="load"
-           hx-swap="outerHTML"
-           hx-indicator="#loading"
-      >
-      <img  id="spinner" class="htmx-indicator" src="{{ url_for ('static', path='/img/gears-spinner.svg')}}"/>
-      </div>
-        {% endif %}
+<header class="py-3 mb-4 border-bottom">
+    <div class="container d-flex flex-wrap justify-content-center">
+      <a href="/" class="d-flex align-items-center mb-3 mb-lg-0 me-lg-auto link-body-emphasis text-decoration-none">
+        <span class="fs-4">PhotoSHAKE REST API GoIT team project app</span>
+      </a>
     </div>
-  </div>
-{% endbloc %}
+</header>
+<main>
+    <div class="py-5 bg-body-tertiary">
+        <div class="container-md">
+            <div class="row align-self-center row-cols-1 mx-5">
+                <img src="{{ photo.url }}" class="img-fluid" alt="{{ photo.description }}">
+                <div class="row py-2 row-cols-1">
+                    <p >Description: {{ photo.description }}</p>
+                </div>
+                <div class="row row-cols-2">
+                    <div class="col"><p>Author: {{ photo.author }}</p></div>
+                    <div class="col">
+                        <ul class="nav me-auto">Tags:
+                            {% for tag in photo.tags %}
+                            <li class="nav-item mx-2"> {{ tag }} </li>
+                            {% endfor %}
+                            </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+{% endblock %}

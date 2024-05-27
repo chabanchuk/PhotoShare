@@ -84,10 +84,9 @@ async def get_photo_detailed_page(
     if access_token:
         user_orm = await auth_service.get_access_user(access_token,
                                                       db)
-        user = UserPhotoReviewModel.from_orm(user_orm)
-
+        user = UserFrontendModel.from_orm(user_orm)
     return templates.TemplateResponse("detailed_page.html",
                                       {"request": request,
-                                       "user": user,
                                        "error": None,
-                                       "photo_id": photo_id})
+                                       "photo_id": photo_id,
+                                       "user": user})

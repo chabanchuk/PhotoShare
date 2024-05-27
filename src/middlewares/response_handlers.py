@@ -1,14 +1,32 @@
 import jose
 from jose import jwt
-from typing import Any
+from typing import Any, Annotated
 
-from fastapi import Request, Response, status
+from fastapi import Request, Response, status, Depends
 from fastapi.responses import RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from frontend.model import UserFrontendModel
 from middlewares.registrator import register_modder
 from frontend.routes import templates
-
+from auth.service import auth as auth_service
+from database import sessionmanager
 from settings import settings
+
+
+async def get_user_from_request(
+        request: Request
+) -> Any:
+    user = None
+    access_token = request.cookies.get('access_token')
+
+    if access_token:
+        async with sessionmanager.session() as db:
+            user_orm = await auth_service.get_access_user(access_token,
+                                                          db)
+            user = UserFrontendModel.from_orm(user_orm)
+
+    return user
 
 
 @register_modder('get_my_profile')
@@ -113,6 +131,7 @@ async def html_get_photos(request: Request,
     """HTMX transformer for get_photos response
 
             Args:
+                request (Request): request onject to handle
                 response (Response): response object to handle
                 data (dict): mapped response data
 
@@ -135,6 +154,7 @@ async def html_create_photo(request: Request,
     """HTMX transformer for create_photo response
 
             Args:
+                request (Request): request onject to handle
                 response (Response): response object to handle
                 data (dict): mapped response data
 
@@ -155,5 +175,21 @@ async def html_create_photo(request: Request,
 async def html_get_photo_id(
         request: Request,
         response: Response,
-        data: dict
+        data: dict,
 ) -> Any:
+    user = await get_user_from_request(request)
+    if response.status_code >= 400:
+        error_message = data.get('detail').get('msg')
+        return templates.TemplateResponse(
+            'photo/detailed_page.html',
+            {'request': request,
+             'error': error_message,
+             'user': user}
+        )
+    return templates.TemplateResponse(
+        "photo/detailed_page.html",
+        {'request': request,
+         'photo': data,
+         'error': None,
+         'user': user}
+    )

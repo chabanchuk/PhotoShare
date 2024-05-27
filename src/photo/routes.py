@@ -315,7 +315,7 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
     return return_list
 
 
-@router.get("/{photo_id: int}", response_model=PhotoResponse)
+@router.get("/detail/{photo_id:int}", response_model=PhotoResponse)
 async def get_photo_id(photo_id: int, db: AsyncSession = Depends(get_db)):
     """
         Retrieves a single photo by its ID, including its comments and tags.
@@ -331,12 +331,22 @@ async def get_photo_id(photo_id: int, db: AsyncSession = Depends(get_db)):
             HTTPException: If the photo is not found.
     """
     query = select(PhotoORM).filter_by(id=photo_id)\
-        .options(selectinload(PhotoORM.comments))
+        .options(
+        selectinload(PhotoORM.comments),
+        selectinload(PhotoORM.author),
+        selectinload(PhotoORM.author).selectinload(ProfileORM.user),
+        selectinload(PhotoORM.tags)
+    )
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
-    return PhotoResponse.from_orm(db_photo)
+    ret_photo = PhotoResponse.from_orm(db_photo)
+    ret_photo.comments_num = len(db_photo.comments)
+    ret_photo.tags = [tag.tag for tag in db_photo.tags]
+    ret_photo.author = db_photo.author.user.username
+
+    return ret_photo
 
 
 @router.get("/tag/{tag_name: str}", response_model=List[PhotoResponse])
