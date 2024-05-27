@@ -55,7 +55,7 @@ async def get_profile(user_id: int, db: AsyncSession):
     result = await db.execute(query)
     profile = result.scalars().first()
     if profile is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=404, detail={"msg": "Profile not found"})
     return profile
 
 
@@ -316,7 +316,7 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
 
 
 @router.get("/{photo_id: int}", response_model=PhotoResponse)
-async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
+async def get_photo_id(photo_id: int, db: AsyncSession = Depends(get_db)):
     """
         Retrieves a single photo by its ID, including its comments and tags.
 

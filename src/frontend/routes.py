@@ -5,12 +5,15 @@ from fastapi.routing import APIRouter
 from fastapi import Request, Cookie, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.service import auth as auth_service
 from database import get_db
 
-from frontend.model import UserFrontendModel
+from frontend.model import (UserFrontendModel,
+                            UserPhotoReviewModel)
+from photo.orm import PhotoORM
 
 router = APIRouter(include_in_schema=False)
 
@@ -47,7 +50,7 @@ def get_login_page(request: Request,
 
 @router.get('/auth/register')
 async def get_register_page(request: Request,
-                   next_url: Optional[str] = None) -> Any:
+                            next_url: Optional[str] = None) -> Any:
     return templates.TemplateResponse('auth/register.html', {'request': request})
 
 
@@ -68,3 +71,23 @@ async def get_add_photo_page(
                                       {'request': request,
                                        'error': None,
                                        'user': user})
+
+
+@router.get("/photo/detailed/{photo_id}")
+async def get_photo_detailed_page(
+        photo_id: int,
+        request: Request,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        access_token: Annotated[str | None, Cookie()] = None,
+) -> Any:
+    user = None
+    if access_token:
+        user_orm = await auth_service.get_access_user(access_token,
+                                                      db)
+        user = UserPhotoReviewModel.from_orm(user_orm)
+
+    return templates.TemplateResponse("detailed_page.html",
+                                      {"request": request,
+                                       "user": user,
+                                       "error": None,
+                                       "photo_id": photo_id})

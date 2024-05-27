@@ -149,3 +149,11 @@ async def html_create_photo(request: Request,
         )
     return RedirectResponse('/',
                             status_code=status.HTTP_303_SEE_OTHER)
+
+
+@register_modder("get_photo_id")
+async def html_get_photo_id(
+        request: Request,
+        response: Response,
+        data: dict
+) -> Any:

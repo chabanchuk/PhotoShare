@@ -1,0 +1,18 @@
+{% extends "base.html%}
+{% block content %}
+<main>
+  <div class="album py-5 bg-body-tertiary">
+    <div class="container">
+     {% if error %}
+        {% else %}
+      <div hx-get="/photos/{{ photo_id }}"
+           hx-trigger="load"
+           hx-swap="outerHTML"
+           hx-indicator="#loading"
+      >
+      <img  id="spinner" class="htmx-indicator" src="{{ url_for ('static', path='/img/gears-spinner.svg')}}"/>
+      </div>
+        {% endif %}
+    </div>
+  </div>
+{% endbloc %}
