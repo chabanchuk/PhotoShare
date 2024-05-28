@@ -23,15 +23,18 @@ async def get_user_from_request(
 
     if access_token:
         async with sessionmanager.session() as db:
-            user_orm = await auth_service.get_access_user(access_token,
-                                                          db)
-            profile = await db.execute(
-                select(ProfileORM)
-                .where(ProfileORM.user_id == user_orm.id)
-            )
-            profile = profile.scalars().first()
-            user = UserFrontendModel.from_orm(user_orm)
-            user.profile_id = profile.id
+            try:
+                user_orm = await auth_service.get_access_user(access_token,
+                                                              db)
+                profile = await db.execute(
+                    select(ProfileORM)
+                    .where(ProfileORM.user_id == user_orm.id)
+                )
+                profile = profile.scalars().first()
+                user = UserFrontendModel.from_orm(user_orm)
+                user.profile_id = profile.id
+            except Exception as e:
+                user = None
 
     return user
 
@@ -271,3 +274,19 @@ async def html_get_photos_by_tag(
                                        'user': user,
                                        'photo_list': data,
                                        'tag': tag})
+
+
+@register_modder('create_qr_code')
+async def html_create_qr_code(
+        request: Request,
+        response: Response,
+        data: dict
+) -> Any:
+    if response.status_code >= 400:
+        return RedirectResponse('/')
+
+    return templates.TemplateResponse(
+        'photo/qr_code.html',
+        {'request': request,
+         'qr_code': data}
+    )

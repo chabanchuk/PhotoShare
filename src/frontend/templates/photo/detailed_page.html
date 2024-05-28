@@ -12,9 +12,16 @@
         <div class="container-md">
             <div class="row align-self-center row-cols-1 mx-5 shadow-sm p-3 mb-5 bg-white rounded">
                 <img src="{{ photo.url }}" class="img-fluid" alt="{{ photo.description }}">
-                <div class="row py-2 row-cols-1">
+                <div class="row py-2 justify-content-between">
+                    <div class="col col-8">
                     <p class="h5">Description: <span class="h5">{{ photo.description }}</span></p>
-                    <a class="position-sticky" href="{{ url_for() }}">QR</a>
+                        </div>
+                    <!-- Button trigger modal -->
+                    <div class="col col-4">
+                    <button type="button" class="btn btn-primary w-25" data-bs-toggle="modal" data-bs-target="#QRCodeModal">
+                      Get QR
+                    </button>
+                        </div>
                 </div>
                 <div class="row row-cols-2">
                     <div class="col"><p class="h6">Author: {{ photo.author }}</p></div>
@@ -30,7 +37,17 @@
                 </div>
             </div>
             <div class="row align-self-center row-cols-1 mx-5 shadow-sm p-3 mb-5 bg-white rounded">
-                <div class="row h5">Comments:</div>
+                <div class="row">
+                    <div class="col-8 h5">
+                    Comments:
+                        </div>
+
+                    {% if commentable %}
+                    <div class="row mx-2 pb-2">
+                    <button type="button" class="btn btn-outline-secondary col-2">Add comment</button>
+                        </div>
+                    {% endif %}
+                </div>
                 <div hx-get="{{ url_for('read_comments_about_photo', photo_id=photo.id) }}"
                      hx-swap="outerHTML"
                      hx-trigger="load">
@@ -40,4 +57,24 @@
         </div>
     </div>
 </main>
+<!-- Modal -->
+<div class="modal fade" id="QRCodeModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">QR Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" hx-get="{{ url_for('create_qr_code', photo_id=photo.id)}}"
+                              hx-swap="innerHTML"
+                              hx-trigger="load">
+        QRCode
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

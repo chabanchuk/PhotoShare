@@ -29,9 +29,12 @@ async def index(
 ) -> Any:
     user = None
     if access_token:
-        user_orm = await auth_service.get_access_user(access_token,
-                                                      db)
-        user = UserFrontendModel.from_orm(user_orm)
+        try:
+            user_orm = await auth_service.get_access_user(access_token,
+                                                          db)
+            user = UserFrontendModel.from_orm(user_orm)
+        except Exception as e:
+            user = None
 
     return templates.TemplateResponse('index.html', {'request': request,
                                                      'user': user})
@@ -83,12 +86,15 @@ async def get_photo_detailed_page(
     commentable = False
     editable = False
     if access_token:
-        user_orm = await auth_service.get_access_user(access_token,
-                                                      db)
-        user = UserFrontendModel.from_orm(user_orm)
+        try:
+            user_orm = await auth_service.get_access_user(access_token,
+                                                          db)
+            user = UserFrontendModel.from_orm(user_orm)
+        except Exception as e:
+            user = None
 
-    if user:
-        pass
+    # if user:
+    #     commentable = True
     return templates.TemplateResponse("detailed_page.html",
                                       {"request": request,
                                        "error": None,
