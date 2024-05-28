@@ -16,7 +16,7 @@
   <div class="album py-5 bg-body-tertiary">
     <div class="container">
       <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3"
-           hx-get="/photos/?offset=0&limit=10"
+           hx-get="/photos"
            hx-trigger="load"
            hx-swap="innerHTML"
            hx-indicator="#loading"
@@ -26,9 +26,11 @@
     </div>
   </div>
   {% if user %}
-<div class="position-absolute top-1 end-0">
-  <a href="/photos/add" class="btn-primary btn mx-5">Add photo</a>
-</div>
+  <a href="/photos/add"
+     class="btn-primary btn mx-5"
+     style="position: fixed;
+            bottom: 40px;
+            right: 0px;">Add photo</a>
 {% endif %}
 </main>
 

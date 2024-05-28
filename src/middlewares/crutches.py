@@ -37,6 +37,8 @@ async def modify_json_response(request: Request,
                          + r"|/openapi.json$|/static/|/favicon.ico$")
 
     referer = request.headers.get('referer')
+    referer = referer if referer else ""
+    print(referer)
 
     swagger_static_match = any(
         (re.search(
@@ -54,7 +56,7 @@ async def modify_json_response(request: Request,
     ua_string = request.headers.get('user-agent')
     browser_match = re.search(browser_regexp, ua_string)
     response_type = "api"
-    if swagger_static_match is None:
+    if swagger_static_match == False:
         if browser_match:
             response_type = "html"
 
@@ -74,6 +76,7 @@ async def modify_json_response(request: Request,
     if response.status_code == 307:
         return response
     content_type = response.headers.get('content-type')
+    content_type = content_type if content_type else ""
     content_json = re.match(r"application/json", content_type)
     if all([response_type == "html",
             content_json]):

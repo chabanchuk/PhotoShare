@@ -1,10 +1,10 @@
 import jose
 from jose import jwt
-from typing import Any, Annotated
+from typing import Any
 
-from fastapi import Request, Response, status, Depends
+from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from frontend.model import UserFrontendModel
 from middlewares.registrator import register_modder
@@ -12,6 +12,7 @@ from frontend.routes import templates
 from auth.service import auth as auth_service
 from database import sessionmanager
 from settings import settings
+from userprofile.orm import ProfileORM
 
 
 async def get_user_from_request(
@@ -24,7 +25,13 @@ async def get_user_from_request(
         async with sessionmanager.session() as db:
             user_orm = await auth_service.get_access_user(access_token,
                                                           db)
+            profile = await db.execute(
+                select(ProfileORM)
+                .where(ProfileORM.user_id == user_orm.id)
+            )
+            profile = profile.scalars().first()
             user = UserFrontendModel.from_orm(user_orm)
+            user.profile_id = profile.id
 
     return user
 
@@ -193,3 +200,60 @@ async def html_get_photo_id(
          'error': None,
          'user': user}
     )
+
+
+@register_modder('read_comments_about_photo')
+async def html_read_comments_about_photo(
+    request: Request,
+    response: Response,
+    data: dict
+) -> Any:
+    user = await get_user_from_request(request)
+    for entry in data:
+        if user:
+            entry['editable'] = (
+                entry['author_fk'] == user.profile_id
+            )
+        else:
+            entry['editable'] = False
+
+    if len(data) == 0:
+        data = None
+    if response.status_code >= 400:
+        error_message = data.get('detail').get('msg')
+        return templates.TemplateResponse(
+            'comments/detailed.html',
+            {'request': request,
+             'error': error_message,
+             'user': user}
+        )
+
+    return templates.TemplateResponse(
+        'comments/detailed.html',
+        {'request': request,
+         'error': None,
+         'comments': data,
+         'user': user}
+    )
+
+
+@register_modder('get_photos_by_tag')
+async def html_get_photos_by_tag(
+        request: Request,
+        response: Response,
+        data: dict
+) -> Any:
+    user = await get_user_from_request(request)
+    tag = request.path_params.get('tag_name')
+    if len(data) == 0:
+        return templates.TemplateResponse('photo/photos_by_tag.html',
+                                          {'request': request,
+                                           'user': user,
+                                           'photo_list': None,
+                                           'tag': tag})
+
+    return templates.TemplateResponse('photo/photos_by_tag.html',
+                                      {'request': request,
+                                       'user': user,
+                                       'photo_list': data,
+                                       'tag': tag})

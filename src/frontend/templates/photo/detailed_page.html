@@ -10,24 +10,33 @@
 <main>
     <div class="py-5 bg-body-tertiary">
         <div class="container-md">
-            <div class="row align-self-center row-cols-1 mx-5">
+            <div class="row align-self-center row-cols-1 mx-5 shadow-sm p-3 mb-5 bg-white rounded">
                 <img src="{{ photo.url }}" class="img-fluid" alt="{{ photo.description }}">
                 <div class="row py-2 row-cols-1">
-                    <p >Description: {{ photo.description }}</p>
+                    <p class="h5">Description: <span class="h5">{{ photo.description }}</span></p>
                 </div>
                 <div class="row row-cols-2">
-                    <div class="col"><p>Author: {{ photo.author }}</p></div>
+                    <div class="col"><p class="h6">Author: {{ photo.author }}</p></div>
                     <div class="col">
-                        <ul class="nav me-auto">Tags:
+                        <ul class="nav me-auto h6">Tags:
                             {% for tag in photo.tags %}
-                            <li class="nav-item mx-2"> {{ tag }} </li>
+                            <li class="nav-item mx-2 text-primary">
+                                <a href="{{ url_for('get_photos_by_tag', tag_name=tag) }}">{{ tag }} </a>
+                            </li>
                             {% endfor %}
                             </ul>
                     </div>
                 </div>
             </div>
+            <div class="row align-self-center row-cols-1 mx-5 shadow-sm p-3 mb-5 bg-white rounded">
+                <div class="row h5">Comments:</div>
+                <div hx-get="{{ url_for('read_comments_about_photo', photo_id=photo.id) }}"
+                     hx-swap="outerHTML"
+                     hx-trigger="load">
+                </div>
+
+            </div>
         </div>
     </div>
-
 </main>
 {% endblock %}

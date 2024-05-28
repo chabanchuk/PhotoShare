@@ -35,5 +35,6 @@ class CommentModel(CommentBase):
     id: PositiveInt
     created_at: datetime
     updated_at: Optional[datetime] = Field(default=None)
+    author_name: str = Field(default=None)
     author_fk: int
     photo_fk: int

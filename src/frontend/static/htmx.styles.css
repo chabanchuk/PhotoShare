@@ -14,3 +14,9 @@
 .img-content{
     object-fit: scale-down;
 }
+
+.fab{
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+}

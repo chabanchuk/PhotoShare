@@ -13,9 +13,11 @@ class UserFrontendModel(BaseModel):
     """
     model_config = ConfigDict(from_attributes=True)
 
+    id: PositiveInt
     username: str
     email: EmailStr
     role: Role
+    profile_id: PositiveInt = Field(default=None)
 
 
 class UserPhotoReviewModel(UserFrontendModel):

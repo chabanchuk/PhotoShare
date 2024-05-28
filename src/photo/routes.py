@@ -349,7 +349,7 @@ async def get_photo_id(photo_id: int, db: AsyncSession = Depends(get_db)):
     return ret_photo
 
 
-@router.get("/tag/{tag_name: str}", response_model=List[PhotoResponse])
+@router.get("/tag/{tag_name:str}", response_model=List[PhotoResponse])
 async def get_photos_by_tag(
     tag_name: str,
     db: Annotated[AsyncSession, Depends(get_db)]
@@ -369,11 +369,36 @@ async def get_photos_by_tag(
     Raises:
         HTTPException: If the tag is not found.
     """
-    tag = await db.scalar(select(TagORM).where(TagORM.tag == tag_name))
+    stmnt = (
+        select(TagORM)
+        .where(TagORM.tag == tag_name)
+        .options(
+            selectinload(TagORM.photos),
+            selectinload(TagORM.photos).selectinload(PhotoORM.author),
+            selectinload(TagORM.photos).selectinload(PhotoORM.comments),
+            selectinload(TagORM.photos).selectinload(PhotoORM.tags),
+            selectinload(TagORM.photos)
+            .selectinload(PhotoORM.author)
+            .selectinload(ProfileORM.user),
+        )
+    )
+
+    db_resp = await db.execute(stmnt)
+    tag = db_resp.scalars().first()
+
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     photos = tag.photos
-    return [PhotoResponse.from_orm(photo) for photo in photos]
+
+    return_list = []
+    for photo in photos:
+        _ = PhotoResponse.from_orm(photo)
+        _.comments_num = len(photo.comments)
+        _.tags = [tag.tag for tag in photo.tags]
+        _.author = photo.author.user.username
+        return_list.append(_)
+
+    return return_list
 
 
 @router.get("/user/{author_username: str}",

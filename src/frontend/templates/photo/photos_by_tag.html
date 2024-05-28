@@ -1,4 +1,25 @@
-{% if photo_list %}
+{% extends "base.html" %}}
+{% block content %}
+<header class="py-3 mb-4 border-bottom">
+    <div class="container d-flex flex-wrap justify-content-center">
+      <a href="/" class="d-flex align-items-center mb-3 mb-lg-0 me-lg-auto link-body-emphasis text-decoration-none">
+        <span class="fs-4">PhotoSHAKE REST API GoIT team project app</span>
+      </a>
+      <form class="d-flex justify-content-end mb-3 mb-lg-0" role="search">
+        <input type="search" class="mx-4 form-control" placeholder="Tag..." aria-label="Tag">
+          <input type="search" class="mx-4 form-control" placeholder="Author..." aria-label="Author">
+      </form>
+    </div>
+  </header>
+
+<main>
+    <div class="container d-flex flex-wrap justify-content-center h5">
+        Photos tagged with <span class="mx-2 text-uppercase text-primary">{{ tag }}</span></div>
+  <div class="album py-5 bg-body-tertiary">
+    <div class="container">
+
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+      {% if photo_list %}
 {% for photo in photo_list %}
 <div class="col">
           <div class="card shadow-sm">
@@ -25,7 +46,22 @@
             </div>
           </div>
         </div>
+
 {% endfor %}
+              </div>
 {% else %}
 <p>No photos found</p>
 {% endif %}
+
+    </div>
+  </div>
+  {% if user %}
+ <a href="/photos/add"
+     class="btn-primary btn mx-5"
+     style="position: fixed;
+            bottom: 40px;
+            right: 0px;">Add photo</a>
+{% endif %}
+</main>
+
+{% endblock %}
