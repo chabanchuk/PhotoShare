@@ -38,7 +38,6 @@ async def modify_json_response(request: Request,
 
     referer = request.headers.get('referer')
     referer = referer if referer else ""
-    print(referer)
 
     swagger_static_match = any(
         (re.search(

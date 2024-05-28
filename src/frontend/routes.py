@@ -13,7 +13,6 @@ from database import get_db
 
 from frontend.model import (UserFrontendModel,
                             UserPhotoReviewModel)
-from photo.orm import PhotoORM
 
 router = APIRouter(include_in_schema=False)
 
@@ -81,12 +80,19 @@ async def get_photo_detailed_page(
         access_token: Annotated[str | None, Cookie()] = None,
 ) -> Any:
     user = None
+    commentable = False
+    editable = False
     if access_token:
         user_orm = await auth_service.get_access_user(access_token,
                                                       db)
         user = UserFrontendModel.from_orm(user_orm)
+
+    if user:
+        pass
     return templates.TemplateResponse("detailed_page.html",
                                       {"request": request,
                                        "error": None,
                                        "photo_id": photo_id,
-                                       "user": user})
+                                       "user": user,
+                                       "commentable": commentable,
+                                       "editable": editable})

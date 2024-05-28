@@ -185,20 +185,30 @@ async def html_get_photo_id(
         data: dict,
 ) -> Any:
     user = await get_user_from_request(request)
+    commentable = False
+    editable = False
+    if user:
+        editable = (data['author'] == user.username)
+        if not editable:
+            commentable = True
     if response.status_code >= 400:
         error_message = data.get('detail').get('msg')
         return templates.TemplateResponse(
             'photo/detailed_page.html',
             {'request': request,
              'error': error_message,
-             'user': user}
+             'user': user,
+             'commentable': commentable,
+             'editable': editable}
         )
     return templates.TemplateResponse(
         "photo/detailed_page.html",
         {'request': request,
          'photo': data,
          'error': None,
-         'user': user}
+         'user': user,
+         'commentable': commentable,
+         'editable': editable}
     )
 
 
@@ -209,11 +219,14 @@ async def html_read_comments_about_photo(
     data: dict
 ) -> Any:
     user = await get_user_from_request(request)
+    comment_disabled = False
     for entry in data:
         if user:
             entry['editable'] = (
                 entry['author_fk'] == user.profile_id
             )
+            if entry['editable']:
+                comment_disabled = True
         else:
             entry['editable'] = False
 
@@ -225,7 +238,8 @@ async def html_read_comments_about_photo(
             'comments/detailed.html',
             {'request': request,
              'error': error_message,
-             'user': user}
+             'user': user,
+             'comment_disabled': comment_disabled}
         )
 
     return templates.TemplateResponse(
