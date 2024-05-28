@@ -19,7 +19,7 @@ from sqlalchemy.orm import selectinload
 from fastapi.responses import Response, JSONResponse
 import qrcode
 from database import get_db
-from photo.model import PhotoResponse, PhotoModel
+from photo.model import PhotoResponse, PhotoModel, QRCodeModel
 from photo.orm import PhotoORM
 from tags.orm import TagORM
 from settings import settings
@@ -239,6 +239,49 @@ async def add_tags_to_photo(
     await db.commit()
 
     return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.get("/qr/{photo_id:int}",
+            response_model=QRCodeModel)
+async def create_qr_code(
+        photo_id: int,
+        db: Annotated[AsyncSession, Depends(get_db)]
+) -> Any:
+    photo_db = await db.execute(
+        select(PhotoORM).where(PhotoORM.id == photo_id)
+    )
+    photo_db = photo_db.scalars().first()
+
+    if photo_db.qrcode_url:
+        return QRCodeModel.from_orm(photo_db)
+
+    if photo_db is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail":
+                         {"msg": f"Photo with id: {photo_id} is not found."}
+                     }
+        )
+    qr_code = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr_code.add_data(photo_db.url)
+    qr_code.make(fit=True)
+    img = qr_code.make_image(fill_color="black", back_color="white")
+    img_bytes = io.BytesIO()
+    img.save(img_bytes)
+    img_bytes.seek(0)
+    # Upload the image to Cloudinary
+    cloudinary_result = upload(img_bytes.read(), folder="qrcode/")
+    photo_db.qrcode_url = cloudinary_result['secure_url']
+    photo_db.qrcode_public_id = cloudinary_result['public_id']
+    await db.commit()
+    await db.refresh(photo_db)
+
+    return QRCodeModel.from_orm(photo_db)
 
 
 @router.patch("/{qrcode}",response_model=PhotoResponse, status_code=status.HTTP_200_OK)

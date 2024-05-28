@@ -14,6 +14,7 @@
                 <img src="{{ photo.url }}" class="img-fluid" alt="{{ photo.description }}">
                 <div class="row py-2 row-cols-1">
                     <p class="h5">Description: <span class="h5">{{ photo.description }}</span></p>
+                    <a class="position-sticky" href="{{ url_for() }}">QR</a>
                 </div>
                 <div class="row row-cols-2">
                     <div class="col"><p class="h6">Author: {{ photo.author }}</p></div>

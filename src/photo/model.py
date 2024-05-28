@@ -39,3 +39,10 @@ class PhotoResponse(PhotoModel):
     tags: list[Any] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class QRCodeModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    qrcode_url: str
+    url: str
