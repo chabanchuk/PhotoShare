@@ -19,9 +19,7 @@
            hx-get="{{ url_for('get_photos') }}"
            hx-trigger="load"
            hx-swap="innerHTML"
-           hx-indicator="#loading"
       >
-      <img  id="spinner" class="htmx-indicator" src="{{ url_for ('static', path='/img/gears-spinner.svg')}}"/>
       </div>
     </div>
   </div>
