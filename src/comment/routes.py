@@ -4,6 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Annotated, Any
 from datetime import datetime, timezone
+
+from sqlalchemy.orm import selectinload
+
 from database import get_db
 from comment.model import CommentModel, CommentCreate, CommentUpdate
 from comment.orm import CommentORM
@@ -60,7 +63,7 @@ async def get_comment(
     return CommentModel.from_orm(db_comment)
 
 
-@router.get("/{photo_id}",
+@router.get("/photo/{photo_id:int}",
             response_model=List[CommentModel])
 async def read_comments_about_photo(
         db: AsyncSession = Depends(get_db),
@@ -77,17 +80,22 @@ async def read_comments_about_photo(
     db_photo = result.scalars().first()
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
-    stmt = select(CommentORM).where(CommentORM.photo_fk == db_photo.id).offset(skip).limit(limit)
+    stmt = (select(CommentORM)
+            .where(CommentORM.photo_fk == db_photo.id)
+            .offset(skip).limit(limit)
+            .options(selectinload(CommentORM.author),
+                     selectinload(CommentORM.author).selectinload(ProfileORM.user)
+                     )
+            )
     result = await db.execute(stmt)
     comments = result.scalars().all()
-    if len(comments) == 0 :
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "detail": f"Comments to photo with id: {photo_id}  are not found."
-            }
-        )
-    return [CommentModel.from_orm(comment) for comment in comments]
+    result = []
+    for comment in comments:
+        _ = CommentModel.from_orm(comment)
+        _.author_name = comment.author.user.username
+        result.append(_)
+
+    return result
 
 
 @router.post("/{photo_id}",

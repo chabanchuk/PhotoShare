@@ -19,7 +19,7 @@ from sqlalchemy.orm import selectinload
 from fastapi.responses import Response, JSONResponse
 import qrcode
 from database import get_db
-from photo.model import PhotoResponse, PhotoModel
+from photo.model import PhotoResponse, PhotoModel, QRCodeModel
 from photo.orm import PhotoORM
 from tags.orm import TagORM
 from settings import settings
@@ -55,7 +55,7 @@ async def get_profile(user_id: int, db: AsyncSession):
     result = await db.execute(query)
     profile = result.scalars().first()
     if profile is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=404, detail={"msg": "Profile not found"})
     return profile
 
 
@@ -241,6 +241,49 @@ async def add_tags_to_photo(
     return Response(status_code=status.HTTP_201_CREATED)
 
 
+@router.get("/qr/{photo_id:int}",
+            response_model=QRCodeModel)
+async def create_qr_code(
+        photo_id: int,
+        db: Annotated[AsyncSession, Depends(get_db)]
+) -> Any:
+    photo_db = await db.execute(
+        select(PhotoORM).where(PhotoORM.id == photo_id)
+    )
+    photo_db = photo_db.scalars().first()
+
+    if photo_db.qrcode_url:
+        return QRCodeModel.from_orm(photo_db)
+
+    if photo_db is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail":
+                         {"msg": f"Photo with id: {photo_id} is not found."}
+                     }
+        )
+    qr_code = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr_code.add_data(photo_db.url)
+    qr_code.make(fit=True)
+    img = qr_code.make_image(fill_color="black", back_color="white")
+    img_bytes = io.BytesIO()
+    img.save(img_bytes)
+    img_bytes.seek(0)
+    # Upload the image to Cloudinary
+    cloudinary_result = upload(img_bytes.read(), folder="qrcode/")
+    photo_db.qrcode_url = cloudinary_result['secure_url']
+    photo_db.qrcode_public_id = cloudinary_result['public_id']
+    await db.commit()
+    await db.refresh(photo_db)
+
+    return QRCodeModel.from_orm(photo_db)
+
+
 @router.patch("/{qrcode}",response_model=PhotoResponse, status_code=status.HTTP_200_OK)
 async def create_photo_link_and_qrcode(db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[UserORM, Depends(auth_service.get_access_user)], photo_id: int = Form(...)):
@@ -315,8 +358,8 @@ async def get_photos(limit: int = Query(10, ge=1, le=10), offset: int = Query(0,
     return return_list
 
 
-@router.get("/{photo_id: int}", response_model=PhotoResponse)
-async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
+@router.get("/detail/{photo_id:int}", response_model=PhotoResponse)
+async def get_photo_id(photo_id: int, db: AsyncSession = Depends(get_db)):
     """
         Retrieves a single photo by its ID, including its comments and tags.
 
@@ -331,15 +374,25 @@ async def get_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
             HTTPException: If the photo is not found.
     """
     query = select(PhotoORM).filter_by(id=photo_id)\
-        .options(selectinload(PhotoORM.comments))
+        .options(
+        selectinload(PhotoORM.comments),
+        selectinload(PhotoORM.author),
+        selectinload(PhotoORM.author).selectinload(ProfileORM.user),
+        selectinload(PhotoORM.tags)
+    )
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
-    return PhotoResponse.from_orm(db_photo)
+    ret_photo = PhotoResponse.from_orm(db_photo)
+    ret_photo.comments_num = len(db_photo.comments)
+    ret_photo.tags = [tag.tag for tag in db_photo.tags]
+    ret_photo.author = db_photo.author.user.username
+
+    return ret_photo
 
 
-@router.get("/tag/{tag_name: str}", response_model=List[PhotoResponse])
+@router.get("/tag/{tag_name:str}", response_model=List[PhotoResponse])
 async def get_photos_by_tag(
     tag_name: str,
     db: Annotated[AsyncSession, Depends(get_db)]
@@ -359,11 +412,36 @@ async def get_photos_by_tag(
     Raises:
         HTTPException: If the tag is not found.
     """
-    tag = await db.scalar(select(TagORM).where(TagORM.tag == tag_name))
+    stmnt = (
+        select(TagORM)
+        .where(TagORM.tag == tag_name)
+        .options(
+            selectinload(TagORM.photos),
+            selectinload(TagORM.photos).selectinload(PhotoORM.author),
+            selectinload(TagORM.photos).selectinload(PhotoORM.comments),
+            selectinload(TagORM.photos).selectinload(PhotoORM.tags),
+            selectinload(TagORM.photos)
+            .selectinload(PhotoORM.author)
+            .selectinload(ProfileORM.user),
+        )
+    )
+
+    db_resp = await db.execute(stmnt)
+    tag = db_resp.scalars().first()
+
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     photos = tag.photos
-    return [PhotoResponse.from_orm(photo) for photo in photos]
+
+    return_list = []
+    for photo in photos:
+        _ = PhotoResponse.from_orm(photo)
+        _.comments_num = len(photo.comments)
+        _.tags = [tag.tag for tag in photo.tags]
+        _.author = photo.author.user.username
+        return_list.append(_)
+
+    return return_list
 
 
 @router.get("/user/{author_username: str}",

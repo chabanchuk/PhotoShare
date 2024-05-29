@@ -40,19 +40,21 @@ async def modify_json_response(request: Request,
     referer = referer if referer else ""
 
     swagger_static_match = any(
-        (re.search(pattern=docs_redoc_regexp,
-                   string=str(request.url),
-                   flags=re.I),
-         re.search(pattern=docs_redoc_regexp,
-                   string=referer,
-                   flags=re.I)
-         )
-    )
+        (re.search(
+            pattern=docs_redoc_regexp,
+            string=str(request.url),
+            flags=re.I
+        ),
+         re.search(
+             pattern=docs_redoc_regexp,
+             string=referer,
+             flags=re.I)
+        )
 
     ua_string = request.headers.get('user-agent')
     browser_match = re.search(browser_regexp, ua_string)
     response_type = "api"
-    if swagger_static_match is None:
+    if swagger_static_match == False:
         if browser_match:
             response_type = "html"
 
@@ -72,6 +74,7 @@ async def modify_json_response(request: Request,
     if response.status_code == 307:
         return response
     content_type = response.headers.get('content-type')
+    content_type = content_type if content_type else ""
     content_json = re.match(r"application/json", content_type)
     if all([response_type == "html",
             content_json]):

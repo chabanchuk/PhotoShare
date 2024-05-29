@@ -4,11 +4,39 @@ from typing import Any
 
 from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy import select
 
+from frontend.model import UserFrontendModel
 from middlewares.registrator import register_modder
 from frontend.routes import templates
-
+from auth.service import auth as auth_service
+from database import sessionmanager
 from settings import settings
+from userprofile.orm import ProfileORM
+
+
+async def get_user_from_request(
+        request: Request
+) -> Any:
+    user = None
+    access_token = request.cookies.get('access_token')
+
+    if access_token:
+        async with sessionmanager.session() as db:
+            try:
+                user_orm = await auth_service.get_access_user(access_token,
+                                                              db)
+                profile = await db.execute(
+                    select(ProfileORM)
+                    .where(ProfileORM.user_id == user_orm.id)
+                )
+                profile = profile.scalars().first()
+                user = UserFrontendModel.from_orm(user_orm)
+                user.profile_id = profile.id
+            except Exception as e:
+                user = None
+
+    return user
 
 
 @register_modder('get_my_profile')
@@ -113,6 +141,7 @@ async def html_get_photos(request: Request,
     """HTMX transformer for get_photos response
 
             Args:
+                request (Request): request onject to handle
                 response (Response): response object to handle
                 data (dict): mapped response data
 
@@ -135,6 +164,7 @@ async def html_create_photo(request: Request,
     """HTMX transformer for create_photo response
 
             Args:
+                request (Request): request onject to handle
                 response (Response): response object to handle
                 data (dict): mapped response data
 
@@ -149,3 +179,114 @@ async def html_create_photo(request: Request,
         )
     return RedirectResponse('/',
                             status_code=status.HTTP_303_SEE_OTHER)
+
+
+@register_modder("get_photo_id")
+async def html_get_photo_id(
+        request: Request,
+        response: Response,
+        data: dict,
+) -> Any:
+    user = await get_user_from_request(request)
+    commentable = False
+    editable = False
+    if user:
+        editable = (data['author'] == user.username)
+        if not editable:
+            commentable = True
+    if response.status_code >= 400:
+        error_message = data.get('detail').get('msg')
+        return templates.TemplateResponse(
+            'photo/detailed_page.html',
+            {'request': request,
+             'error': error_message,
+             'user': user,
+             'commentable': commentable,
+             'editable': editable}
+        )
+    return templates.TemplateResponse(
+        "photo/detailed_page.html",
+        {'request': request,
+         'photo': data,
+         'error': None,
+         'user': user,
+         'commentable': commentable,
+         'editable': editable}
+    )
+
+
+@register_modder('read_comments_about_photo')
+async def html_read_comments_about_photo(
+    request: Request,
+    response: Response,
+    data: dict
+) -> Any:
+    user = await get_user_from_request(request)
+    comment_disabled = False
+    for entry in data:
+        if user:
+            entry['editable'] = (
+                entry['author_fk'] == user.profile_id
+            )
+            if entry['editable']:
+                comment_disabled = True
+        else:
+            entry['editable'] = False
+
+    if len(data) == 0:
+        data = None
+    if response.status_code >= 400:
+        error_message = data.get('detail').get('msg')
+        return templates.TemplateResponse(
+            'comments/detailed.html',
+            {'request': request,
+             'error': error_message,
+             'user': user,
+             'comment_disabled': comment_disabled}
+        )
+
+    return templates.TemplateResponse(
+        'comments/detailed.html',
+        {'request': request,
+         'error': None,
+         'comments': data,
+         'user': user}
+    )
+
+
+@register_modder('get_photos_by_tag')
+async def html_get_photos_by_tag(
+        request: Request,
+        response: Response,
+        data: dict
+) -> Any:
+    user = await get_user_from_request(request)
+    tag = request.path_params.get('tag_name')
+    if len(data) == 0:
+        return templates.TemplateResponse('photo/photos_by_tag.html',
+                                          {'request': request,
+                                           'user': user,
+                                           'photo_list': None,
+                                           'tag': tag})
+
+    return templates.TemplateResponse('photo/photos_by_tag.html',
+                                      {'request': request,
+                                       'user': user,
+                                       'photo_list': data,
+                                       'tag': tag})
+
+
+@register_modder('create_qr_code')
+async def html_create_qr_code(
+        request: Request,
+        response: Response,
+        data: dict
+) -> Any:
+    if response.status_code >= 400:
+        return RedirectResponse('/')
+
+    return templates.TemplateResponse(
+        'photo/qr_code.html',
+        {'request': request,
+         'qr_code': data}
+    )

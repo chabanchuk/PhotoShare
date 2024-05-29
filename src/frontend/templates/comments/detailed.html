@@ -1,0 +1,22 @@
+{% if comments %}
+{% for comment in comments %}
+<div class="row align-self-center row-col-1 mx-2 shadow-sm p-2 mb-3 bg-light rounded">
+    <div class="row">
+        <p class="h6">{{ comment.text }}</p>
+    </div>
+            {% if comment.editable %}
+            <div class="row row-cols-3 w-25">
+                <a class="col-3 mx-2 btn btn-outline-primary" href="#" role="button">Edit</a>
+            </div>
+            {% endif %}
+    <div class="row">
+        <div class="col text-muted">Comment by: {{ comment.author_name }}</div>
+    </div>
+    <div class="row">
+        <div class="col text-muted"><small> Created at: {{ comment.created_at }}</small></div>
+        <div class="col text-muted"><small> Updated at: {{ comment.updated_at }}</small></div>
+    </div>
+{% endfor %}
+{% else %}
+<div class="h6">Photo got no comments yet.</div>
+{% endif %}
