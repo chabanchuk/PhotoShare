@@ -49,7 +49,7 @@ async def modify_json_response(request: Request,
              pattern=docs_redoc_regexp,
              string=referer,
              flags=re.I)
-        )
+        ))
 
     ua_string = request.headers.get('user-agent')
     browser_match = re.search(browser_regexp, ua_string)
