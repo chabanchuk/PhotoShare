@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "PhotoShare REST API application - GoIT Python Web team project"
 authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>",
     "Denys Poletuchiy <denpolet@gmail.com>",
-    "Angelika Kodlubovska <angelikagymnasticschannel@gmail.com>",
     "Sergiy Chabanchuk <chabanchuk@gmail.com>",
     "Maksym Melnyk <maks.melnyk.94@gmail.com>",
     "Oleksandr Buts <oleksandr190378@gmail.com>"
@@ -30,6 +29,7 @@ asyncpg = "^0.29.0"
 user-profile = "^1.0.0"
 fastapi-mail = "^1.4.1"
 qrcode = "^7.4.2"
+gunicorn = "^22.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"

@@ -44,8 +44,18 @@
 
                     {% if commentable %}
                     <div class="row mx-2 pb-2">
-                    <button type="button" class="btn btn-outline-secondary col-2">Add comment</button>
-                        </div>
+<form action="{{url_for('create_comment', photo_id=photo.id)}}" method="post">
+  <div class="form-group">
+    <label for="comment">Your comment</label>
+    <textarea class="form-control" id="comment" name="text"></textarea>
+  </div>
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="btn-group">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Add comment</button>
+      </div>
+    </div>
+    {{comment_disabled}}
+</form>
                     {% endif %}
                 </div>
                 <div hx-get="{{ url_for('read_comments_about_photo', photo_id=photo.id) }}"
@@ -55,6 +65,7 @@
 
             </div>
         </div>
+    </div>
     </div>
 </main>
 <!-- Modal -->

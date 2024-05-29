@@ -4,8 +4,9 @@ from typing import Any
 
 from fastapi import Request, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
+from comment.orm import CommentORM
 from frontend.model import UserFrontendModel
 from middlewares.registrator import register_modder
 from frontend.routes import templates
@@ -134,6 +135,21 @@ async def html_auth_logout(request: Request,
     return response
 
 
+@register_modder('auth_register')
+async def html_auth_register(
+        request: Request,
+        response: Response,
+        data: dict
+) -> Any:
+    if len(data) == 0:
+        return RedirectResponse('/',
+                                status_code=status.HTTP_303_SEE_OTHER)
+
+    return templates.TemplateResponse("auth/registered.html",
+                                      {"request": request,
+                                       "username": data['username']})
+
+
 @register_modder('get_photos')
 async def html_get_photos(request: Request,
                           response: Response,
@@ -194,6 +210,20 @@ async def html_get_photo_id(
         editable = (data['author'] == user.username)
         if not editable:
             commentable = True
+
+    async with sessionmanager.session() as db:
+        stmnt = (
+            select(CommentORM)
+            .where(and_(
+                CommentORM.photo_fk == data['id'],
+                CommentORM.author_fk == user.profile_id
+            ))
+        )
+        db_comment = await db.execute(stmnt)
+        db_comment = db_comment.scalars().first()
+        if db_comment:
+            commentable = False
+
     if response.status_code >= 400:
         error_message = data.get('detail').get('msg')
         return templates.TemplateResponse(
@@ -250,7 +280,8 @@ async def html_read_comments_about_photo(
         {'request': request,
          'error': None,
          'comments': data,
-         'user': user}
+         'user': user,
+         'comment_disabled': comment_disabled}
     )
 
 
@@ -290,3 +321,19 @@ async def html_create_qr_code(
         {'request': request,
          'qr_code': data}
     )
+
+
+@register_modder('create_comment')
+async def html_create_comment(
+    request: Request,
+    response: Response,
+    data: dict
+) -> Any:
+    photo_id = data.get('photo_fk')
+    if any((response.status_code >= 400,
+             photo_id is None)):
+        return RedirectResponse('/',
+                                status_code=status.HTTP_303_SEE_OTHER)
+
+    return RedirectResponse(f'/photos/detail/{photo_id}',
+                            status_code=status.HTTP_303_SEE_OTHER)

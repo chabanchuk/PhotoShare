@@ -31,12 +31,14 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     },
 )
 async def auth_register(
-        user: Annotated[UserRegisterModel, Form()],
+        username: Annotated[str, Form(...)],
+        email: Annotated[str, Form(...)],
+        password: Annotated[str, Form(...)],
         db: Annotated[AsyncSession, Depends(get_db)]
 ) -> Any:
     exists = await db.execute(
         select(UserORM).filter(
-            or_(UserORM.email == user.email, UserORM.username == user.username)
+            or_(UserORM.email == email, UserORM.username == username)
         )
     )
     exists = exists.scalars().first()
@@ -49,18 +51,15 @@ async def auth_register(
             },
         )
 
-    hashed_pwd = auth_service.get_hash_password(user.password)
-    user_orm = UserORM(email=user.email, username=user.username, password=hashed_pwd)
-    user_orm.profile = ProfileORM(user=user_orm,
-                                  **user.model_dump(exclude={
-                                      "email", "username", "password"},
-                                      exclude_unset=True))
+    hashed_pwd = auth_service.get_hash_password(password)
+    user_orm = UserORM(email=email, username=username, password=hashed_pwd)
+    user_orm.profile = ProfileORM(user=user_orm)
 
     db.add(user_orm)
     await db.commit()
     await db.refresh(user_orm)
 
-    ret_user = await db.execute(select(UserORM).filter(UserORM.email == user.email))
+    ret_user = await db.execute(select(UserORM).filter(UserORM.email == email))
     ret_user = ret_user.scalars().first()
     user_db_model = UserDBModel.from_orm(ret_user)
     user_db_model.registered_at = user_db_model.registered_at.isoformat()

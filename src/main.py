@@ -30,17 +30,17 @@ app.include_router(frontend_router)
 app.include_router(tags_router)
 
 
-origins = [
-    "https://goit-pg5-goit-pg5-3039617b.koyeb.app/"
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# origins = [
+#     "https://goit-pg5-goit-pg5-3039617b.koyeb.app/"
+# ]
+#
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 
 @app.middleware('http')
@@ -54,9 +54,9 @@ async def call_response_modificator(request, call_next):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app=app,
-                host="0.0.0.0",
-                port=8000)
     # uvicorn.run(app=app,
-    #             host="localhost",
+    #             host="0.0.0.0",
     #             port=8000)
+    uvicorn.run(app=app,
+                host="localhost",
+                port=8000)

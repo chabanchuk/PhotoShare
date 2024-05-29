@@ -102,3 +102,28 @@ async def get_photo_detailed_page(
                                        "user": user,
                                        "commentable": commentable,
                                        "editable": editable})
+
+
+@router.get('/comments/add-form/{photo_id:int}')
+async def get_add_comment_form(
+        photo_id: int,
+        request: Request,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        access_token: Annotated[str | None, Cookie()] = None
+) -> Any:
+    user = None
+    if access_token:
+        try:
+            user_orm = await auth_service.get_access_user(access_token,
+                                                          db)
+            user = UserFrontendModel.from_orm(user_orm)
+        except Exception as e:
+            user = None
+
+    if user is None:
+        return RedirectResponse('/auth/login/')
+
+    return templates.TemplateResponse('comments/form_add.html',
+                                      {'request': request,
+                                       'photo_id': photo_id,
+                                       'user': user})

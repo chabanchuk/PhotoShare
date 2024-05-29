@@ -1,8 +1,6 @@
-from datetime import datetime, timezone
-from typing import Optional, Type, Annotated
+from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field, PositiveInt, ConfigDict
-import photo.model as photo_models
-import userprofile.model as user_models
 
 
 class CommentBase(BaseModel):

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import selectinload
 
 from database import get_db
-from comment.model import CommentModel, CommentCreate, CommentUpdate
+from comment.model import CommentModel, CommentCreate, CommentUpdate, CommentBase
 from comment.orm import CommentORM
 from photo.orm import PhotoORM
 from userprofile.orm import ProfileORM, UserORM
@@ -98,10 +98,10 @@ async def read_comments_about_photo(
     return result
 
 
-@router.post("/{photo_id}",
+@router.post("/add/{photo_id}",
              response_model=CommentModel)
 async def create_comment(
-        comment: CommentCreate,
+        text: Annotated[str, Form()],
         photo_id: int,
         db: Annotated[AsyncSession, Depends(get_db)],
         user: Annotated[UserORM, Depends(auth_service.get_access_user)]
@@ -144,7 +144,7 @@ async def create_comment(
         )
 
     db_comment = CommentORM(
-        text=comment.text,
+        text=text,
         author_fk=db_profile.id,
         photo_fk=photo_id,
         created_at=datetime.now(timezone.utc)

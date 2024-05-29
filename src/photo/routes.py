@@ -125,7 +125,6 @@ async def create_photo(
     ret_photo.comments_num = len(db_photo.comments)
     ret_photo.tags = [tag.tag for tag in db_photo.tags]
     ret_photo.author = db_photo.author.user.username
-    print(ret_photo)
 
     return ret_photo
 
@@ -173,12 +172,30 @@ async def transform_photo(
                 error during the transformation process.
     """
     profile = await get_profile(user.id, db)
-    query = select(PhotoORM).where(and_(PhotoORM.id == photo_id,
-                                        PhotoORM.author_fk == profile.id))
+    query = (
+        select(PhotoORM).where(PhotoORM.id == photo_id)
+        .options(
+            selectinload(PhotoORM.tags),
+            selectinload(PhotoORM.author),
+            selectinload(PhotoORM.author).selectinload(ProfileORM.user),
+            selectinload(PhotoORM.comments))
+    )
     result = await db.execute(query)
     db_photo = result.scalars().first()
     if not db_photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": {
+                "msg": f"Photo with id {photo_id} is not found."
+            }}
+        )
+    if db_photo.author_fk != profile.id:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": {
+                "msg": "Only author of the photo can transform it."
+            }}
+        )
     transformations = {key: value for key, value in locals().items()
                        if key != 'db'
                        and key != 'photo_id'
@@ -194,7 +211,27 @@ async def transform_photo(
         db.add(db_photo)
         await db.commit()
         await db.refresh(db_photo)
-        return PhotoResponse.from_orm(db_photo)
+
+        stmnt = (
+            select(PhotoORM)
+            .where(PhotoORM.public_id == db_photo.public_id)
+            .options(
+                selectinload(PhotoORM.tags),
+                selectinload(PhotoORM.author),
+                selectinload(PhotoORM.author).selectinload(ProfileORM.user),
+                selectinload(PhotoORM.comments))
+        )
+
+        db_resp = await db.execute(stmnt)
+        db_photo = db_resp.scalars().first()
+
+        ret_photo = PhotoResponse.from_orm(db_photo)
+        ret_photo.comments_num = len(db_photo.comments)
+        ret_photo.tags = [tag.tag for tag in db_photo.tags]
+        ret_photo.author = db_photo.author.user.username
+
+        return ret_photo
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
